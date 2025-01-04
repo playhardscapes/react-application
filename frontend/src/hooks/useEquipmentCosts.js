@@ -1,25 +1,38 @@
- 
 // src/hooks/useEquipmentCosts.js
 import { useMemo } from 'react';
-import { EquipmentCalculator } from '../utils/equipmentCalculator';
 
-export const useEquipmentCosts = (equipmentData) => {
-  const costs = useMemo(() => {
-    const calculator = new EquipmentCalculator(equipmentData);
-    return calculator.calculateTotalCosts();
-  }, [equipmentData]);
+export const useEquipmentCosts = (equipment, pricing) => {
+  return useMemo(() => {
+    if (!equipment || !pricing) return {};
 
-  return {
-    ...costs,
-    // Helper getters for common calculations
-    get totalHoles() {
-      return costs.details.totalHoles;
-    },
-    get totalInstallationHours() {
-      return costs.details.totalInstallationHours;
-    },
-    get totalCost() {
-      return costs.totals.grandTotal;
-    }
-  };
+    const posts = {
+      tennis: {
+        equipment: (equipment.permanentTennisPoles || 0) * (pricing.equipment?.permanentTennisPoles || 0),
+        installation: (equipment.permanentTennisPoles || 0) * (pricing.services?.holeCutting || 0) * 2
+      },
+      pickleball: {
+        equipment: (equipment.permanentPickleballPoles || 0) * (pricing.equipment?.permanentPickleballPoles || 0),
+        installation: (equipment.permanentPickleballPoles || 0) * (pricing.services?.holeCutting || 0) * 2
+      }
+    };
+
+    const windscreen = {
+      lowGrade: {
+        feet: equipment.lowGradeWindscreen || 0,
+        cost: (equipment.lowGradeWindscreen || 0) * (pricing.equipment?.lowGradeWindscreen || 0)
+      },
+      highGrade: {
+        feet: equipment.highGradeWindscreen || 0,
+        cost: (equipment.highGradeWindscreen || 0) * (pricing.equipment?.highGradeWindscreen || 0)
+      }
+    };
+
+    return {
+      posts,
+      windscreen,
+      total: posts.tennis.equipment + posts.tennis.installation +
+             posts.pickleball.equipment + posts.pickleball.installation +
+             windscreen.lowGrade.cost + windscreen.highGrade.cost
+    };
+  }, [equipment, pricing]);
 };

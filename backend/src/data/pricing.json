@@ -1,0 +1,24 @@
+{
+  "materials": {
+    "cpb": 150,
+    "sand": 12,
+    "cement": 96,
+    "minorCracks": 45,
+    "majorCracks": 65,
+    "acrylicResurfacer": 25,
+    "colorCoating": 28
+  },
+  "equipment": {
+    "permanentTennisPoles": 450,
+    "permanentPickleballPoles": 350,
+    "mobilePickleballNets": 200,
+    "lowGradeWindscreen": 3,
+    "highGradeWindscreen": 5
+  },
+  "services": {
+    "acidWash": 0.50,
+    "holeCutting": 150,
+    "generalLabor": 65,
+    "windscreenInstallation": 2
+  }
+}

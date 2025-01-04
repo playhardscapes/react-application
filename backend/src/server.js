@@ -7,6 +7,7 @@ const fs = require('fs'); // Import for file handling
 const fetch = require('node-fetch'); // Import fetch for backend API requests
 const proposalRoutes = require('./routes/proposal');
 const notificationRoutes = require('./routes/notifications');
+const pricingRoutes = require('./routes/pricing');
 
 // Load environment variables from .env file in the root directory
 dotenv.config({ path: path.join(__dirname, '..', '.env') });
@@ -30,6 +31,7 @@ app.use(cors({
 // Routes
 app.use('/api/proposal', proposalRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api', pricingRoutes);
 
 // Pricing Configuration Endpoints
 app.post('/api/save-pricing', (req, res) => {

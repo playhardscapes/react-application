@@ -1,18 +1,16 @@
 // src/components/estimator/EstimationWizard.jsx
 import React, { useState, useEffect } from 'react';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 
 import ClientSection from './sections/ClientSection';
 import ProjectBasics from './sections/ProjectBasics';
-import SurfaceSystem from './sections/SurfaceSystem';
-import CourtConfiguration from './sections/CourtConfiguration';
-import LogisticsSection from './sections/LogisticsSection';
-import EquipmentSection from './sections/EquipmentSection';
-import PricingSection from './sections/PricingSection';
-import SupportingDocuments from './components/SupportingDocuments';
-import { ProposalGenerator, ProposalPreview } from './components/proposal';
+import SurfaceSystem from './sections/SurfaceSystem/index';
+import CourtConfiguration from './sections/CourtConfiguration/index';
+import LogisticsSection from './sections/LogisticsSection/index';
+import EquipmentSection from './sections/EquipmentSection/index';
+import PricingSection from './sections/PricingSection/index';
+import { ProposalGenerator, ProposalPreview } from './components/proposal/index.jsx';
 
 const INITIAL_STATE = {
   clientInfo: {
@@ -27,10 +25,6 @@ const INITIAL_STATE = {
     length: 0,
     width: 0,
     squareFootage: 0
-  },
-  substrate: {
-    type: '',
-    notes: ''
   },
   surfaceSystem: {
     needsPressureWash: true,
@@ -48,10 +42,6 @@ const INITIAL_STATE = {
     cushionSystem: {
       needed: false,
       area: 0
-    },
-    topCoat: {
-      numberOfColors: 1,
-      colorNotes: ''
     }
   },
   courtConfig: {
@@ -79,34 +69,26 @@ const INITIAL_STATE = {
 
 const EstimationWizard = () => {
   const [projectData, setProjectData] = useState(INITIAL_STATE);
-  const [globalPricing, setGlobalPricing] = useState(null);
-  const [selectedDocs, setSelectedDocs] = useState([]);
-  const [generatedContent, setGeneratedContent] = useState('');
   const [currentTab, setCurrentTab] = useState('details');
+  const [pricing, setPricing] = useState(null);
+  const [proposalContent, setProposalContent] = useState('');
 
   useEffect(() => {
+    // Load pricing data
     const loadPricing = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/load-pricing');
+        const response = await fetch('http://localhost:5000/api/pricing');
         if (response.ok) {
-          const prices = await response.json();
-          setGlobalPricing(prices);
+          const data = await response.json();
+          setPricing(data);
         }
       } catch (error) {
-        console.error('Error loading pricing:', error);
+        console.error('Failed to load pricing:', error);
       }
     };
+
     loadPricing();
   }, []);
-
-  const handleProposalGenerated = (content) => {
-    setGeneratedContent(content);
-    setCurrentTab('preview');
-  };
-
-  const handleProposalSent = () => {
-    // Handle success, maybe reset form or show confirmation
-  };
 
   const updateSection = (section, data) => {
     setProjectData(prev => ({
@@ -115,38 +97,42 @@ const EstimationWizard = () => {
     }));
   };
 
+  const handleProposalGenerated = (content) => {
+    setProposalContent(content);
+    setCurrentTab('preview');
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white p-6">
-      <div className="max-w-7xl mx-auto bg-white rounded-xl shadow-xl overflow-hidden">
+      <div className="max-w-7xl mx-auto">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold">Play Hardscapes Estimator</h1>
-              <p className="text-gray-600">Project Estimate Builder</p>
-            </div>
+          <CardHeader>
+            <h1 className="text-3xl font-bold">Play Hardscapes Estimator</h1>
+            <p className="text-gray-600">Project Estimate Builder</p>
           </CardHeader>
 
           <CardContent>
             <Tabs value={currentTab} onValueChange={setCurrentTab}>
-              <TabsList className="grid grid-cols-4">
+              <TabsList className="grid grid-cols-4 w-full">
                 <TabsTrigger value="details">Project Details</TabsTrigger>
                 <TabsTrigger value="pricing">Cost Summary</TabsTrigger>
                 <TabsTrigger value="generate">Generate Proposal</TabsTrigger>
-                <TabsTrigger value="preview">Proposal Preview</TabsTrigger>
+                <TabsTrigger value="preview">Preview</TabsTrigger>
               </TabsList>
 
-              <TabsContent value="details">
-                <div className="space-y-8">
+              <TabsContent value="details" className="mt-6">
+                <div className="space-y-6">
                   <ClientSection
                     data={projectData.clientInfo}
                     onChange={(data) => updateSection('clientInfo', data)}
                   />
                   <ProjectBasics
-                    data={projectData.substrate}
-                    onChange={(data) => updateSection('substrate', data)}
+                    data={projectData.dimensions}
+                    onChange={(data) => updateSection('dimensions', data)}
                   />
                   <SurfaceSystem
                     data={projectData.surfaceSystem}
+                    dimensions={projectData.dimensions}
                     onChange={(data) => updateSection('surfaceSystem', data)}
                   />
                   <CourtConfiguration
@@ -165,37 +151,25 @@ const EstimationWizard = () => {
               </TabsContent>
 
               <TabsContent value="pricing">
-                <PricingSection
-                  projectData={projectData}
-                  globalPricing={globalPricing}
-                />
+                {pricing && (
+                  <PricingSection
+                    projectData={projectData}
+                    pricing={pricing}
+                  />
+                )}
               </TabsContent>
 
               <TabsContent value="generate">
-                <div className="p-6">
-                  <SupportingDocuments
-                    selectedDocs={selectedDocs}
-                    onDocSelect={(docUrl, isSelected) => {
-                      if (isSelected) {
-                        setSelectedDocs([...selectedDocs, docUrl]);
-                      } else {
-                        setSelectedDocs(selectedDocs.filter(url => url !== docUrl));
-                      }
-                    }}
-                  />
-                  <ProposalGenerator
-                    projectData={projectData}
-                    supportingDocs={selectedDocs}
-                    onGenerated={handleProposalGenerated}
-                  />
-                </div>
+                <ProposalGenerator
+                  projectData={projectData}
+                  onGenerated={handleProposalGenerated}
+                />
               </TabsContent>
 
               <TabsContent value="preview">
                 <ProposalPreview
-                  content={generatedContent}
+                  content={proposalContent}
                   clientInfo={projectData.clientInfo}
-                  onSend={handleProposalSent}
                 />
               </TabsContent>
             </Tabs>

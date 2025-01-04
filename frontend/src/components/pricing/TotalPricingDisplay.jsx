@@ -1,4 +1,3 @@
- 
 // src/components/pricing/TotalPricingDisplay.jsx
 import React from 'react';
 import { useMaterialsCosts } from '../../hooks/useMaterialsCosts';
