@@ -1,13 +1,11 @@
-
 // src/components/estimator/sections/PricingSection/PricingSummary.jsx
 import React from 'react';
 import { formatCurrency } from '@/utils/formatting';
 
 export const PricingSummary = ({ materialsCosts, laborCosts, dimensions }) => {
-  const baseTotal = (materialsCosts?.total || 0) + (laborCosts?.total || 0);
-  const tax = baseTotal * 0.06;
+  const baseTotal = materialsCosts.total + laborCosts.total;
   const margin = baseTotal * 0.3;
-  const totalCost = baseTotal + tax + margin;
+  const totalCost = baseTotal + margin;
 
   return (
     <div className="bg-white rounded-lg shadow p-6">
@@ -17,10 +15,6 @@ export const PricingSummary = ({ materialsCosts, laborCosts, dimensions }) => {
         <div className="flex justify-between text-sm">
           <span className="text-gray-600">Base Cost:</span>
           <span>{formatCurrency(baseTotal)}</span>
-        </div>
-        <div className="flex justify-between text-sm">
-          <span className="text-gray-600">Sales Tax (6%):</span>
-          <span>{formatCurrency(tax)}</span>
         </div>
         <div className="flex justify-between text-sm">
           <span className="text-gray-600">Margin (30%):</span>

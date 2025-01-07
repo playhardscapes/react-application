@@ -1,17 +1,9 @@
-// ClientSection.jsx
-import React, { useState, useEffect } from 'react';
-
-const debounce = (func, delay) => {
-  let timeout;
-  return (...args) => {
-    clearTimeout(timeout);
-    timeout = setTimeout(() => func(...args), delay);
-  };
-};
+// src/components/estimator/sections/ClientSection.jsx
+import React, { useState } from 'react';
+import { debounce } from 'lodash';
 
 const ClientSection = ({ data, onChange }) => {
   const [localLocation, setLocalLocation] = useState(data.projectLocation || '');
-  const [distanceToSite, setDistanceToSite] = useState(data.distanceToSite || 0);
   const [loadingMileage, setLoadingMileage] = useState(false);
   const [error, setError] = useState(null);
 
@@ -21,6 +13,7 @@ const ClientSection = ({ data, onChange }) => {
 
       setLoadingMileage(true);
       setError(null);
+      
       try {
         const response = await fetch('http://localhost:5000/api/mileage', {
           method: 'POST',
@@ -30,45 +23,49 @@ const ClientSection = ({ data, onChange }) => {
             destination: location,
           }),
         });
+        
         const result = await response.json();
+        console.log('Mileage API response:', result);
+        
         if (response.ok) {
+          // Just update clientInfo section, let EstimationWizard handle logistics
           onChange({
             ...data,
             projectLocation: location,
-            distanceToSite: result.distanceInMiles,
+            distanceToSite: result.distanceInMiles
           });
-          setDistanceToSite(result.distanceInMiles);
           setError(null);
         } else {
           setError(result.error || 'Unable to calculate mileage.');
         }
       } catch (err) {
+        console.error('Mileage calculation error:', err);
         setError('Unable to calculate mileage. Please check the location.');
       } finally {
         setLoadingMileage(false);
       }
     }, 1000),
     [data, onChange]
-  );
+);
 
   const handleLocationChange = (value) => {
     setLocalLocation(value);
-    onChange({ ...data, projectLocation: value });
     debouncedFetchMileage(value);
   };
 
   return (
     <div className="space-y-4">
       <h3 className="text-xl font-semibold">Client Information</h3>
+      
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium mb-1">Client Name</label>
           <input
             type="text"
-            placeholder="Full Name"
             value={data.name || ''}
             onChange={(e) => onChange({ ...data, name: e.target.value })}
             className="w-full p-2 border rounded"
+            placeholder="Full Name"
           />
         </div>
 
@@ -76,10 +73,10 @@ const ClientSection = ({ data, onChange }) => {
           <label className="block text-sm font-medium mb-1">Email</label>
           <input
             type="email"
-            placeholder="client@example.com"
             value={data.email || ''}
             onChange={(e) => onChange({ ...data, email: e.target.value })}
             className="w-full p-2 border rounded"
+            placeholder="client@example.com"
           />
         </div>
 
@@ -87,10 +84,10 @@ const ClientSection = ({ data, onChange }) => {
           <label className="block text-sm font-medium mb-1">Phone Number</label>
           <input
             type="tel"
-            placeholder="(555) 555-5555"
             value={data.phone || ''}
             onChange={(e) => onChange({ ...data, phone: e.target.value })}
             className="w-full p-2 border rounded"
+            placeholder="(555) 555-5555"
           />
         </div>
 
@@ -98,32 +95,30 @@ const ClientSection = ({ data, onChange }) => {
           <label className="block text-sm font-medium mb-1">Project Location</label>
           <input
             type="text"
-            placeholder="City, State"
             value={localLocation}
             onChange={(e) => handleLocationChange(e.target.value)}
             className="w-full p-2 border rounded"
+            placeholder="City, State"
           />
+          {loadingMileage && (
+            <p className="text-sm text-blue-500 mt-1">Calculating distance...</p>
+          )}
+          {error && (
+            <p className="text-sm text-red-500 mt-1">{error}</p>
+          )}
+          {data.distanceToSite > 0 && !loadingMileage && (
+            <p className="text-sm text-green-600 mt-1">
+              Distance: {Math.round(data.distanceToSite)} miles from Roanoke
+            </p>
+          )}
         </div>
 
-        <div>
-          <label className="block text-sm font-medium mb-1">Mileage (from Roanoke, VA)</label>
-          <input
-            type="text"
-            value={distanceToSite.toFixed(2)}
-            readOnly
-            className={`w-full p-2 border rounded ${loadingMileage ? 'text-gray-500' : ''}`}
-          />
-          {loadingMileage && <p className="text-sm text-gray-500">Calculating mileage...</p>}
-          {!loadingMileage && error && <p className="text-sm text-red-500">{error}</p>}
-        </div>
-
-        <div>
+        <div className="md:col-span-2">
           <label className="block text-sm font-medium mb-1">Notes</label>
           <textarea
             value={data.keyNotes || ''}
             onChange={(e) => onChange({ ...data, keyNotes: e.target.value })}
-            className="w-full p-2 border rounded"
-            rows="3"
+            className="w-full p-2 border rounded h-24"
             placeholder="Important details, special requirements..."
           />
         </div>

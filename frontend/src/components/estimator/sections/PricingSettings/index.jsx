@@ -1,71 +1,156 @@
 // src/components/estimator/sections/PricingSettings/index.jsx
 import React, { useState } from 'react';
 import { Card } from '@/components/ui/card';
-import { NumberInput } from '@/components/ui/number-input';
 import { Button } from '@/components/ui/button';
+import { NumberInput } from '@/components/ui/number-input';
 
-const PricingSettings = ({ pricing, onUpdate }) => {
-  const [isSaving, setIsSaving] = useState(false);
-  const [message, setMessage] = useState('');
+const PricingSettings = ({ pricing, onUpdate, onCancel }) => {
+  const [localPricing, setLocalPricing] = useState(pricing);
 
   const updatePrice = (category, subcategory, value) => {
-    onUpdate({
-      ...pricing,
+    setLocalPricing(prev => ({
+      ...prev,
       [category]: {
-        ...pricing[category],
+        ...prev[category],
         [subcategory]: value
       }
-    });
+    }));
   };
 
-  const handleSave = async () => {
-    setIsSaving(true);
-    setMessage('');
-
-    try {
-      const response = await fetch('http://localhost:5000/api/pricing', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(pricing)
-      });
-
-      if (response.ok) {
-        setMessage('Pricing settings saved successfully');
-      } else {
-        setMessage('Failed to save pricing settings');
-      }
-    } catch (error) {
-      setMessage('Error saving pricing settings');
-    } finally {
-      setIsSaving(false);
-    }
+  const handleSave = () => {
+    onUpdate(localPricing);
   };
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Pricing Settings</h2>
-        <Button
-          onClick={handleSave}
-          disabled={isSaving}
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-        >
-          {isSaving ? 'Saving...' : 'Save Changes'}
-        </Button>
+        <div className="space-x-2">
+          <Button variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button onClick={handleSave}>
+            Save Changes
+          </Button>
+        </div>
       </div>
 
-      {message && (
-        <div className={`p-3 rounded ${
-          message.includes('success') ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-        }`}>
-          {message}
+      {/* Materials Section */}
+      <Card className="p-6">
+        <h3 className="text-xl font-semibold mb-4">Materials</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <NumberInput
+            label="Binder (5 gal bucket)"
+            value={localPricing.materials.cpb}
+            onChange={(value) => updatePrice('materials', 'cpb', value)}
+            prefix="$"
+          />
+          <NumberInput
+            label="Sand (per bag)"
+            value={localPricing.materials.sand}
+            onChange={(value) => updatePrice('materials', 'sand', value)}
+            prefix="$"
+          />
+          <NumberInput
+            label="Cement (48qt package)"
+            value={localPricing.materials.cement}
+            onChange={(value) => updatePrice('materials', 'cement', value)}
+            prefix="$"
+          />
+          <NumberInput
+            label="Minor Crack Filler (per gal)"
+            value={localPricing.materials.minorCracks}
+            onChange={(value) => updatePrice('materials', 'minorCracks', value)}
+            prefix="$"
+          />
+          <NumberInput
+            label="Major Crack Filler (per gal)"
+            value={localPricing.materials.majorCracks}
+            onChange={(value) => updatePrice('materials', 'majorCracks', value)}
+            prefix="$"
+          />
+          <NumberInput
+            label="Acrylic Resurfacer (per gal)"
+            value={localPricing.materials.acrylicResurfacer}
+            onChange={(value) => updatePrice('materials', 'acrylicResurfacer', value)}
+            prefix="$"
+          />
+          <NumberInput
+            label="Color Coating (per gal)"
+            value={localPricing.materials.colorCoating}
+            onChange={(value) => updatePrice('materials', 'colorCoating', value)}
+            prefix="$"
+          />
         </div>
-      )}
+      </Card>
 
-      {/* Rest of the component remains the same */}
-      {/* ... Materials Card */}
-      {/* ... Equipment Card */}
-      {/* ... Services Card */}
+      {/* Equipment Section */}
+      <Card className="p-6">
+        <h3 className="text-xl font-semibold mb-4">Equipment</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <NumberInput
+            label="Tennis Posts (per set)"
+            value={localPricing.equipment.permanentTennisPoles}
+            onChange={(value) => updatePrice('equipment', 'permanentTennisPoles', value)}
+            prefix="$"
+          />
+          <NumberInput
+            label="Pickleball Posts (per set)"
+            value={localPricing.equipment.permanentPickleballPoles}
+            onChange={(value) => updatePrice('equipment', 'permanentPickleballPoles', value)}
+            prefix="$"
+          />
+          <NumberInput
+            label="Mobile Pickleball Nets"
+            value={localPricing.equipment.mobilePickleballNets}
+            onChange={(value) => updatePrice('equipment', 'mobilePickleballNets', value)}
+            prefix="$"
+          />
+          <NumberInput
+            label="Low Grade Windscreen (per ft)"
+            value={localPricing.equipment.lowGradeWindscreen}
+            onChange={(value) => updatePrice('equipment', 'lowGradeWindscreen', value)}
+            prefix="$"
+          />
+          <NumberInput
+            label="High Grade Windscreen (per ft)"
+            value={localPricing.equipment.highGradeWindscreen}
+            onChange={(value) => updatePrice('equipment', 'highGradeWindscreen', value)}
+            prefix="$"
+          />
+        </div>
+      </Card>
+
+      {/* Services Section */}
+      <Card className="p-6">
+        <h3 className="text-xl font-semibold mb-4">Services</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <NumberInput
+            label="Acid Wash (per sq ft)"
+            value={localPricing.services.acidWash}
+            onChange={(value) => updatePrice('services', 'acidWash', value)}
+            prefix="$"
+          />
+          <NumberInput
+            label="Hole Cutting (per hole)"
+            value={localPricing.services.holeCutting}
+            onChange={(value) => updatePrice('services', 'holeCutting', value)}
+            prefix="$"
+          />
+          <NumberInput
+            label="General Labor (per hour)"
+            value={localPricing.services.generalLabor}
+            onChange={(value) => updatePrice('services', 'generalLabor', value)}
+            prefix="$"
+          />
+          <NumberInput
+            label="Windscreen Installation (per ft)"
+            value={localPricing.services.windscreenInstallation}
+            onChange={(value) => updatePrice('services', 'windscreenInstallation', value)}
+            prefix="$"
+          />
+        </div>
+      </Card>
     </div>
   );
 };

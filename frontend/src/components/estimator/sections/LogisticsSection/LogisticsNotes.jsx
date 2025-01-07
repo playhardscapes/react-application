@@ -1,8 +1,7 @@
- 
 // src/components/estimator/sections/LogisticsSection/LogisticsNotes.jsx
 import React from 'react';
 
-export const LogisticsNotes = ({ notes, onChange }) => (
+export const LogisticsNotes = ({ notes = '', onChange }) => (
   <div>
     <label className="block text-sm font-medium mb-2">
       Logistics Notes

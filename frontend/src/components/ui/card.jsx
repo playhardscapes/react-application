@@ -1,190 +1,55 @@
- 
 // src/components/ui/card.jsx
-export const Card = ({ children, className = '' }) => (
-  <div className={`bg-white rounded-lg shadow ${className}`}>
-    {children}
-  </div>
-);
+import * as React from "react"
+import { cn } from "@/lib/utils"
 
-export const CardHeader = ({ children, className = '' }) => (
-  <div className={`p-6 border-b ${className}`}>
-    {children}
-  </div>
-);
+const Card = React.forwardRef(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn("rounded-lg border bg-card text-card-foreground shadow-sm", className)}
+    {...props}
+  />
+))
+Card.displayName = "Card"
 
-export const CardContent = ({ children, className = '' }) => (
-  <div className={`p-6 ${className}`}>
-    {children}
-  </div>
-);
+const CardHeader = React.forwardRef(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn("flex flex-col space-y-1.5 p-6", className)}
+    {...props}
+  />
+))
+CardHeader.displayName = "CardHeader"
 
-// src/components/ui/number-input.jsx
-export const NumberInput = ({
-  label,
-  value,
-  onChange,
-  min,
-  max,
-  step = 'any',
-  prefix,
-  disabled = false,
-  helperText,
-  error,
-  className = ''
-}) => (
-  <div className="space-y-1">
-    {label && (
-      <label className="block text-sm font-medium text-gray-700">
-        {label}
-      </label>
-    )}
-    <div className="relative">
-      {prefix && (
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
-          {prefix}
-        </span>
-      )}
-      <input
-        type="number"
-        value={value}
-        onChange={(e) => onChange(e.target.valueAsNumber || 0)}
-        min={min}
-        max={max}
-        step={step}
-        disabled={disabled}
-        className={`
-          w-full p-2 border rounded shadow-sm
-          ${prefix ? 'pl-7' : ''}
-          ${disabled ? 'bg-gray-100' : ''}
-          ${error ? 'border-red-500' : 'border-gray-300'}
-          ${className}
-        `}
-      />
-    </div>
-    {helperText && !error && (
-      <p className="text-sm text-gray-500">{helperText}</p>
-    )}
-    {error && (
-      <p className="text-sm text-red-500">{error}</p>
-    )}
-  </div>
-);
+const CardTitle = React.forwardRef(({ className, ...props }, ref) => (
+  <h3
+    ref={ref}
+    className={cn("text-lg font-semibold leading-none tracking-tight", className)}
+    {...props}
+  />
+))
+CardTitle.displayName = "CardTitle"
 
-// src/components/ui/select.jsx
-export const Select = ({
-  label,
-  value,
-  onChange,
-  options,
-  placeholder = "Select...",
-  error,
-  className = ''
-}) => (
-  <div className="space-y-1">
-    {label && (
-      <label className="block text-sm font-medium text-gray-700">
-        {label}
-      </label>
-    )}
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className={`
-        w-full p-2 border rounded shadow-sm
-        ${error ? 'border-red-500' : 'border-gray-300'}
-        ${className}
-      `}
-    >
-      <option value="">{placeholder}</option>
-      {options.map(({ value, label }) => (
-        <option key={value} value={value}>
-          {label}
-        </option>
-      ))}
-    </select>
-    {error && (
-      <p className="text-sm text-red-500">{error}</p>
-    )}
-  </div>
-);
+const CardDescription = React.forwardRef(({ className, ...props }, ref) => (
+  <p
+    ref={ref}
+    className={cn("text-sm text-muted-foreground", className)}
+    {...props}
+  />
+))
+CardDescription.displayName = "CardDescription"
 
-// src/components/ui/textarea.jsx
-export const Textarea = ({
-  label,
-  value,
-  onChange,
-  rows = 3,
-  placeholder,
-  error,
-  className = ''
-}) => (
-  <div className="space-y-1">
-    {label && (
-      <label className="block text-sm font-medium text-gray-700">
-        {label}
-      </label>
-    )}
-    <textarea
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      rows={rows}
-      placeholder={placeholder}
-      className={`
-        w-full p-2 border rounded shadow-sm
-        ${error ? 'border-red-500' : 'border-gray-300'}
-        ${className}
-      `}
-    />
-    {error && (
-      <p className="text-sm text-red-500">{error}</p>
-    )}
-  </div>
-);
+const CardContent = React.forwardRef(({ className, ...props }, ref) => (
+  <div ref={ref} className={cn("p-6 pt-0", className)} {...props} />
+))
+CardContent.displayName = "CardContent"
 
-// src/components/ui/checkbox.jsx
-export const Checkbox = ({
-  label,
-  checked,
-  onChange,
-  className = ''
-}) => (
-  <label className={`flex items-center space-x-2 ${className}`}>
-    <input
-      type="checkbox"
-      checked={checked}
-      onChange={(e) => onChange(e.target.checked)}
-      className="rounded border-gray-300"
-    />
-    <span className="text-sm">{label}</span>
-  </label>
-);
+const CardFooter = React.forwardRef(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn("flex items-center p-6 pt-0", className)}
+    {...props}
+  />
+))
+CardFooter.displayName = "CardFooter"
 
-// src/components/ui/button.jsx
-export const Button = ({
-  children,
-  onClick,
-  variant = 'primary',
-  disabled = false,
-  className = ''
-}) => {
-  const variants = {
-    primary: 'bg-blue-500 text-white hover:bg-blue-600',
-    secondary: 'bg-gray-200 text-gray-800 hover:bg-gray-300',
-    danger: 'bg-red-500 text-white hover:bg-red-600'
-  };
-
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      className={`
-        px-4 py-2 rounded shadow-sm
-        ${variants[variant]}
-        ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
-        ${className}
-      `}
-    >
-      {children}
-    </button>
-  );
-};
+export { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
