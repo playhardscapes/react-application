@@ -1,0 +1,5 @@
+DO $$ 
+BEGIN
+ALTER TABLE vendors DROP COLUMN IF EXISTS state;
+ALTER TABLE vendors ADD COLUMN state VARCHAR(50);
+END $$;

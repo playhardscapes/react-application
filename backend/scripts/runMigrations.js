@@ -1,7 +1,45 @@
-// backend/scripts/runMigrations.js
+// scripts/runMigrations.js
+
 const fs = require('fs').promises;
 const path = require('path');
 const { pool } = require('../src/config/database');
+
+async function checkSchema() {
+  let client;
+  try {
+    client = await pool.connect();
+    
+    console.log('\nChecking vendors table structure:');
+    const tableResult = await client.query(`
+      SELECT 
+        column_name, 
+        data_type,
+        character_maximum_length,
+        is_nullable
+      FROM 
+        information_schema.columns
+      WHERE 
+        table_name = 'vendors'
+      ORDER BY 
+        ordinal_position;
+    `);
+    
+    console.log('\nColumns in vendors table:');
+    console.table(tableResult.rows);
+
+    console.log('\nChecking executed migrations:');
+    const migrationsResult = await client.query('SELECT * FROM migrations ORDER BY executed_at;');
+    console.log('\nExecuted migrations:');
+    console.table(migrationsResult.rows);
+
+  } catch (error) {
+    console.error('Schema check error:', error);
+  } finally {
+    if (client) {
+      client.release();
+    }
+  }
+}
 
 async function runMigrations() {
   let client;
@@ -39,7 +77,6 @@ async function runMigrations() {
         
         await client.query('BEGIN');
         try {
-          // Execute the entire SQL file as one statement
           await client.query(sql);
           await client.query('INSERT INTO migrations (name) VALUES ($1)', [file]);
           await client.query('COMMIT');
@@ -60,11 +97,22 @@ async function runMigrations() {
     process.exit(1);
   } finally {
     if (client) {
-      await client.release();
+      client.release();
     }
-    await pool.end();
-    process.exit(0);
   }
 }
 
-runMigrations();
+async function main() {
+  try {
+    if (process.argv[2] === 'check') {
+      await checkSchema();
+      await runMigrations();
+    } else {
+      await runMigrations();
+    }
+  } finally {
+    await pool.end();
+  }
+}
+
+main();

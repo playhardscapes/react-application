@@ -38,6 +38,7 @@ const vendorService = {
       phone,
       address,
       city,
+      state,           // Added state
       postal_code,
       payment_terms,
       notes,
@@ -57,6 +58,7 @@ const vendorService = {
         phone,
         address,
         city,
+        state,          
         postal_code,
         payment_terms,
         notes,
@@ -67,7 +69,7 @@ const vendorService = {
         ap_contact_name,
         ap_contact_email,
         ap_contact_phone
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
       RETURNING *
     `;
     
@@ -77,6 +79,7 @@ const vendorService = {
       phone || null,
       address || null,
       city || null,
+      state || null,        // Added state
       postal_code || vendorData.zip || null,
       payment_terms || null,
       notes || null,

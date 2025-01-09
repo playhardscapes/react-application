@@ -1,9 +1,15 @@
-// src/components/vendors/VendorDetail.jsx
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DocumentList } from '../documents';
+
+const InfoRow = ({ label, value }) => (
+  <div>
+    <p className="text-sm font-medium text-gray-500">{label}</p>
+    <p>{value || 'N/A'}</p>
+  </div>
+);
 
 const VendorDetail = () => {
   const { id } = useParams();
@@ -53,7 +59,6 @@ const VendorDetail = () => {
 
       if (!response.ok) throw new Error('Failed to delete vendor');
       
-      // Redirect to vendors list after successful deletion
       navigate('/vendors');
     } catch (error) {
       console.error('Error deleting vendor:', error);
@@ -105,7 +110,14 @@ const VendorDetail = () => {
         <div className="flex justify-between items-start">
           <div>
             <h1 className="text-3xl font-bold">{vendor.name}</h1>
-            <p className="text-gray-600">{vendor.city}, {vendor.state}</p>
+            <p className="text-gray-600">
+              {vendor.city}{vendor.state ? `, ${vendor.state}` : ''}
+            </p>
+            {vendor.vendor_type && (
+              <span className="inline-block mt-2 px-2 py-1 text-sm rounded-full bg-blue-100 text-blue-800">
+                {vendor.vendor_type}
+              </span>
+            )}
           </div>
           <div className="flex gap-4">
             <Button
@@ -130,25 +142,54 @@ const VendorDetail = () => {
             <CardTitle>Contact Information</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-sm font-medium text-gray-500">Email</p>
-                <p>{vendor.email || 'N/A'}</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <h3 className="font-medium">Company Details</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <InfoRow label="Main Email" value={vendor.email} />
+                  <InfoRow label="Main Phone" value={vendor.phone} />
+                </div>
+                <div>
+                  <InfoRow 
+                    label="Address" 
+                    value={[
+                      vendor.address,
+                      [vendor.city, vendor.state, vendor.postal_code || vendor.zip]
+                        .filter(Boolean)
+                        .join(', ')
+                    ].filter(Boolean).join('\n')}
+                  />
+                </div>
+                <InfoRow label="Payment Terms" value={vendor.payment_terms} />
               </div>
-              <div>
-                <p className="text-sm font-medium text-gray-500">Phone</p>
-                <p>{vendor.phone || 'N/A'}</p>
-              </div>
-              <div className="col-span-2">
-                <p className="text-sm font-medium text-gray-500">Address</p>
-                <p>{vendor.address}</p>
-                <p>{vendor.city}, {vendor.state} {vendor.zip}</p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-500">Payment Terms</p>
-                <p>{vendor.payment_terms || 'Not specified'}</p>
+
+              <div className="space-y-4">
+                <h3 className="font-medium">Sales Contact</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <InfoRow label="Name" value={vendor.sales_contact_name} />
+                  <InfoRow label="Phone" value={vendor.sales_contact_phone} />
+                  <div className="col-span-2">
+                    <InfoRow label="Email" value={vendor.sales_contact_email} />
+                  </div>
+                </div>
+
+                <h3 className="font-medium pt-4">AP Contact</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <InfoRow label="Name" value={vendor.ap_contact_name} />
+                  <InfoRow label="Phone" value={vendor.ap_contact_phone} />
+                  <div className="col-span-2">
+                    <InfoRow label="Email" value={vendor.ap_contact_email} />
+                  </div>
+                </div>
               </div>
             </div>
+
+            {vendor.notes && (
+              <div className="mt-6 pt-6 border-t">
+                <h3 className="font-medium mb-2">Notes</h3>
+                <p className="text-gray-600">{vendor.notes}</p>
+              </div>
+            )}
           </CardContent>
         </Card>
 

@@ -43,12 +43,11 @@ const AppContent = () => {
         <Route path="/projects" element={<ProjectsList />} />
 
         {/* Vendors - specific routes first */}
-        <Route path="/vendors/new" element={<VendorForm />} />
-        {/* Change this route to redirect to /invoices/new */}
-        <Route path="/vendors/invoice/new" element={<Navigate to="/invoices/new" replace />} />
-        <Route path="/vendors/:id/edit" element={<VendorForm />} />
-        <Route path="/vendors/:id" element={<VendorDetail />} />
-        <Route path="/vendors" element={<VendorDashboard />} />
+       {/* Vendors - specific routes first */}
+       <Route path="/vendors/new" element={<VendorForm />} />
+       <Route path="/vendors/:id/edit" element={<VendorForm />} />
+       <Route path="/vendors/:id" element={<VendorDetail />} />
+       <Route path="/vendors" element={<VendorList />} />
 
         {/* Invoices */}
         <Route path="/invoices/new" element={<InvoiceForm />} />
