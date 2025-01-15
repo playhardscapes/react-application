@@ -1,7 +1,7 @@
 // src/routes/materials.js
 const express = require('express');
 const router = express.Router();
-const materialsService = require('../services/materialsService');
+const materialsService = require('../services/materialsService');  // Update this path
 
 // Get all materials
 router.get('/materials', async (req, res) => {
@@ -43,7 +43,7 @@ router.post('/materials/receive', async (req, res) => {
     res.status(201).json(transaction);
   } catch (error) {
     console.error('Error receiving materials:', error);
-    res.status(500).json({ error: 'Failed to receive materials' });
+    res.status(500).json({ error: 'Failed to receive materials', details: error.message });
   }
 });
 

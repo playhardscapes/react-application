@@ -1,0 +1,11 @@
+{
+	"folders": [
+		{
+			"name": "play-hardscapes",
+			"path": ".."
+		}
+	],
+	"settings": {
+		"CodeGPT.apiKey": "OpenAI"
+	}
+}

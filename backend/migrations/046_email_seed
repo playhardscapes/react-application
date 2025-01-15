@@ -1,0 +1,19 @@
+INSERT INTO emails (
+  sender_email, 
+  sender_name, 
+  recipient_email, 
+  subject, 
+  body, 
+  html_body,
+  received_at,
+  status
+) VALUES (
+  'sender@example.com',
+  'Sender Name',
+  'recipient@example.com',
+  'Test Email Subject',
+  'This is the email body.',
+  '<p>This is the email body.</p>',
+  NOW(),
+  'unread'
+);

@@ -4,14 +4,31 @@ import { TimeEstimates } from './TimeEstimates';
 import { LaborDetails } from './LaborDetails';
 import { LogisticsNotes } from './LogisticsNotes';
 
-const LogisticsSection = ({ data, onChange }) => {
-  console.log('LogisticsSection received data:', data);
+const DEFAULT_LOGISTICS = {
+  travelDays: 2,
+  numberOfTrips: 1,
+  generalLaborHours: 0,
+  hotelRate: 150,
+  logisticalNotes: '',
+  distanceToSite: 0
+};
+
+const LogisticsSection = ({ data = {}, onChange, errors = {} }) => {
+  // Parse JSONB field if it's a string
+  const logisticsData = typeof data.logistics === 'string' ? 
+    JSON.parse(data.logistics) : 
+    (data.logistics || DEFAULT_LOGISTICS);
 
   const updateField = (field, value) => {
-    console.log('Updating logistics field:', field, value);
+    const updatedLogistics = {
+      ...logisticsData,
+      [field]: value
+    };
+
+    // Update the JSONB field
     onChange({
       ...data,
-      [field]: value
+      logistics: updatedLogistics
     });
   };
 
@@ -21,19 +38,22 @@ const LogisticsSection = ({ data, onChange }) => {
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <TimeEstimates
-          data={data}
+          data={logisticsData}
           onChange={updateField}
+          errors={errors}
         />
 
         <LaborDetails
-          data={data}
+          data={logisticsData}
           onChange={updateField}
+          errors={errors}
         />
       </div>
 
       <LogisticsNotes
-        notes={data.logisticalNotes || ''}
+        notes={logisticsData.logisticalNotes || ''}
         onChange={(value) => updateField('logisticalNotes', value)}
+        error={errors.logisticalNotes}
       />
     </div>
   );

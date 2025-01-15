@@ -1,8 +1,9 @@
-import React from 'react';
+// src/components/Dashboard/index.jsx
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { 
-  PenTool, 
+  PenTool,
   Files,
   FileText,
   Building2,
@@ -11,11 +12,15 @@ import {
   Calendar,
   Users,
   Truck,
-  AlertCircle
+  AlertCircle,
+  FileSpreadsheet,
+  DollarSign,
+  Mail,  // Add this import
+  MessageCircle  // Add this import if not already present
 } from 'lucide-react';
 
 // Quick Action Card Component
-const DashboardCard = ({ icon: Icon, title, description, onClick, status }) => (
+const DashboardCard = ({ icon: Icon, title, description, onClick, status, communicationCount }) => (
   <Card 
     className="cursor-pointer transition-all hover:shadow-lg"
     onClick={onClick}
@@ -31,6 +36,11 @@ const DashboardCard = ({ icon: Icon, title, description, onClick, status }) => (
               {status}
             </span>
           )}
+          {communicationCount > 0 && (
+            <span className="inline-block ml-2 px-2 py-1 text-xs rounded-full bg-red-100 text-red-800">
+              {communicationCount} Unhandled
+            </span>
+          )}
         </div>
       </div>
     </CardHeader>
@@ -38,35 +48,83 @@ const DashboardCard = ({ icon: Icon, title, description, onClick, status }) => (
 );
 
 // Attention Needed Section
-const AttentionNeeded = () => (
-  <Card className="col-span-full">
-    <CardHeader>
-      <CardTitle className="text-red-600 flex items-center gap-2">
-        <AlertCircle className="h-5 w-5" />
-        Needs Attention
-      </CardTitle>
-    </CardHeader>
-    <CardContent>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-red-50 p-3 rounded">
-          <p className="font-medium">3 Proposals Awaiting Follow-up</p>
-          <p className="text-sm text-gray-600">Oldest: 8 days ago</p>
+const AttentionNeeded = () => {
+  const [communications, setCommunications] = useState([]);
+  const [aiSummary, setAiSummary] = useState(null);
+
+  useEffect(() => {
+    const fetchCommunications = async () => {
+      try {
+        const response = await fetch('/api/communications/unhandled');
+        const data = await response.json();
+        setCommunications(data);
+
+        // Optional: AI Summary Generation (placeholder)
+        // You'll implement actual AI integration later
+        if (data.length > 0) {
+          setAiSummary("Quick AI summary of communications would appear here.");
+        }
+      } catch (error) {
+        console.error('Failed to fetch communications', error);
+      }
+    };
+
+    fetchCommunications();
+  }, []);
+
+  return (
+    <Card className="col-span-full">
+      <CardHeader>
+        <CardTitle className="text-red-600 flex items-center gap-2">
+          <AlertCircle className="h-5 w-5" />
+          Needs Attention
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="bg-red-50 p-3 rounded">
+            <p className="font-medium">3 Proposals Awaiting Follow-up</p>
+            <p className="text-sm text-gray-600">Oldest: 8 days ago</p>
+          </div>
+          <div className="bg-yellow-50 p-3 rounded">
+            <p className="font-medium">2 Projects Need Scheduling</p>
+            <p className="text-sm text-gray-600">Weather window closing</p>
+          </div>
+          <div className="bg-blue-50 p-3 rounded">
+            <p className="font-medium">4 Invoices Due This Week</p>
+            <p className="text-sm text-gray-600">Total: $3,450</p>
+          </div>
+          <div className="bg-green-50 p-3 rounded">
+            <p className="font-medium">{communications.length} Unhandled Communications</p>
+            {aiSummary && (
+              <p className="text-sm text-gray-700 mt-2 italic">
+                {aiSummary}
+              </p>
+            )}
+          </div>
         </div>
-        <div className="bg-yellow-50 p-3 rounded">
-          <p className="font-medium">2 Projects Need Scheduling</p>
-          <p className="text-sm text-gray-600">Weather window closing</p>
-        </div>
-        <div className="bg-blue-50 p-3 rounded">
-          <p className="font-medium">4 Invoices Due This Week</p>
-          <p className="text-sm text-gray-600">Total: $3,450</p>
-        </div>
-      </div>
-    </CardContent>
-  </Card>
-);
+      </CardContent>
+    </Card>
+  );
+};
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const [communicationCount, setCommunicationCount] = useState(0);
+
+  useEffect(() => {
+    const fetchCommunicationCount = async () => {
+      try {
+        const response = await fetch('/api/communications/unhandled/count');
+        const data = await response.json();
+        setCommunicationCount(data.count);
+      } catch (error) {
+        console.error('Failed to fetch communication count', error);
+      }
+    };
+
+    fetchCommunicationCount();
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white p-6">
@@ -76,19 +134,31 @@ const Dashboard = () => {
           <p className="text-gray-600 mt-2">Business Management System</p>
         </div>
 
-        {/* Attention Needed Section */}
         <AttentionNeeded />
 
-        {/* Main Navigation Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* Sales Pipeline */}
+          <DashboardCard
+            icon={Users}
+            title="Clients"
+            description="Client management and follow-ups"
+            onClick={() => navigate('/clients')}
+            status="Coming Soon"
+          />
+          
           <DashboardCard
             icon={PenTool}
-            title="Create Proposal"
-            description="Build a new project proposal"
+            title="Create Estimate"
+            description="Build a new project estimate"
             onClick={() => navigate('/estimate/new')}
           />
-
+          
+          <DashboardCard
+            icon={FileSpreadsheet}
+            title="Estimates"
+            description="View and manage saved estimates"
+            onClick={() => navigate('/estimates')}
+          />
+          
           <DashboardCard
             icon={Files}
             title="Proposals"
@@ -102,6 +172,8 @@ const Dashboard = () => {
             description="Generate and track contracts"
             onClick={() => navigate('/contracts')}
           />
+
+          
 
           {/* Project Management */}
           <DashboardCard
@@ -126,7 +198,6 @@ const Dashboard = () => {
             title="Vendors"
             description="Manage vendors and payments"
             onClick={() => navigate('/vendors')}
-            status="Coming Soon"
           />
 
           <DashboardCard
@@ -136,15 +207,6 @@ const Dashboard = () => {
             onClick={() => navigate('/inventory')}
             status="Coming Soon"
           />
-
-          <DashboardCard
-            icon={Users}
-            title="Clients"
-            description="Client management and follow-ups"
-            onClick={() => navigate('/clients')}
-            status="Coming Soon"
-          />
-
           <DashboardCard
             icon={Clock}
             title="Time Tracking"
@@ -152,6 +214,27 @@ const Dashboard = () => {
             onClick={() => navigate('/time')}
             status="Coming Soon"
           />
+            <DashboardCard
+            icon={DollarSign}
+            title="Pricing"
+            description="Manage pricing configurations"
+            onClick={() => navigate('/pricing')}
+          />
+
+<DashboardCard
+  icon={MessageCircle}
+  title="Communications"
+  description="Manage client messages and inquiries"
+  onClick={() => navigate('/communications')}
+  communicationCount={communicationCount}
+/>
+
+<DashboardCard
+  icon={Mail}
+  title="Email Management"
+  description="Full email inbox and management"
+  onClick={() => navigate('/emails')}
+/>
         </div>
       </div>
     </div>

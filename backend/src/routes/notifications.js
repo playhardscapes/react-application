@@ -4,6 +4,8 @@ const express = require('express');
 const router = express.Router();
 const sgMail = require('@sendgrid/mail');
 const twilio = require('twilio');
+const path = require('path');
+const fs = require('fs').promises;
 
 // Initialize SendGrid
 const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY;

@@ -1,0 +1,50 @@
+-- migrations/047_fix_trigger_cascade.sql
+
+-- Drop existing trigger
+DROP TRIGGER IF EXISTS update_client_metrics ON projects;
+DROP TRIGGER IF EXISTS update_client_project_metrics_trigger ON projects;
+
+-- Drop function with CASCADE
+DROP FUNCTION IF EXISTS update_client_project_metrics() CASCADE;
+
+-- Create updated function
+CREATE OR REPLACE FUNCTION update_client_project_metrics()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF TG_OP = 'INSERT' THEN
+        -- When a new project is added
+        UPDATE clients
+        SET 
+            total_projects = COALESCE(total_projects, 0) + 1,
+            total_project_value = COALESCE(total_project_value, 0) + COALESCE(
+                (SELECT contract_amount FROM contracts WHERE id = NEW.contract_id),
+                0
+            ),
+            last_project_date = CURRENT_DATE
+        WHERE id = NEW.client_id;
+    ELSIF TG_OP = 'DELETE' THEN
+        -- When a project is deleted
+        UPDATE clients
+        SET 
+            total_projects = GREATEST(COALESCE(total_projects, 0) - 1, 0),
+            total_project_value = GREATEST(COALESCE(total_project_value, 0) - COALESCE(
+                (SELECT contract_amount FROM contracts WHERE id = OLD.contract_id),
+                0
+            ), 0),
+            last_project_date = (
+                SELECT MAX(created_at)::date 
+                FROM projects 
+                WHERE client_id = OLD.client_id AND id != OLD.id
+            )
+        WHERE id = OLD.client_id;
+    END IF;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create new trigger
+CREATE TRIGGER update_client_metrics
+    AFTER INSERT OR DELETE ON projects
+    FOR EACH ROW
+    EXECUTE FUNCTION update_client_project_metrics();

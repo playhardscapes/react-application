@@ -1,65 +1,64 @@
 // src/hooks/useLaborCosts.js
 import { useMemo } from 'react';
 
-export const useLaborCosts = (logistics, pricing) => {
+export const useLaborCosts = (estimateData, pricing) => {
   return useMemo(() => {
-    if (!logistics || !pricing) return {};
+    if (!estimateData || !pricing) return { total: 0 };
 
-    console.log('Labor costs calculation input:', { logistics, pricing }); // Debug log
+    // Ensure we have the required pricing structures
+    const services = pricing.services || {};
+    
+    // Add some debug logging
+    console.log('Services pricing for labor:', services);
 
-    const standardDays = logistics.estimatedDays || 0;
-    const additionalHours = logistics.generalLaborHours || 0;
-    const hotelRate = logistics.hotelRate || 150;
-    const numberOfTrips = logistics.numberOfTrips || 1;
-    const distanceToSite = logistics.distanceToSite || 0;
-    const mileageRate = 0.63; // IRS standard rate
+    const logistics = estimateData.logistics || {
+      travelDays: 2,
+      numberOfTrips: 1,
+      generalLaborHours: 0,
+      distanceToSite: 0,
+      hotelRate: 150
+    };
 
-    console.log('Using distance:', distanceToSite); // Debug log
+    const mileageRate = 0.63;
+    const perDiemRate = 50;
 
-    // Calculate travel costs
     const travel = {
-      totalMiles: distanceToSite * 2 * numberOfTrips,
-      cost: (distanceToSite * 2 * numberOfTrips * mileageRate)
+      totalMiles: (logistics.distanceToSite || 0) * 2 * (logistics.numberOfTrips || 1),
+      cost: ((logistics.distanceToSite || 0) * 2 * (logistics.numberOfTrips || 1) * mileageRate)
     };
 
-    // Calculate hotel costs
     const hotel = {
-      nights: Math.max(0, standardDays - 1) * numberOfTrips,
-      cost: Math.max(0, standardDays - 1) * numberOfTrips * hotelRate
+      nights: Math.max(0, (logistics.travelDays || 2) - 1) * (logistics.numberOfTrips || 1),
+      cost: Math.max(0, (logistics.travelDays || 2) - 1) * (logistics.numberOfTrips || 1) * (logistics.hotelRate || 150)
     };
 
-    // Calculate per diem
     const perDiem = {
-      days: standardDays * numberOfTrips,
+      days: (logistics.travelDays || 2) * (logistics.numberOfTrips || 1),
       crew: 2,
-      cost: standardDays * numberOfTrips * 50 * 2
+      cost: (logistics.travelDays || 2) * (logistics.numberOfTrips || 1) * perDiemRate * 2
     };
 
-    // Calculate labor costs
-    const laborRate = pricing.services?.generalLabor || 0;
     const labor = {
-      standard: standardDays * 8 * laborRate,
-      additional: additionalHours * laborRate,
-      total: (standardDays * 8 + additionalHours) * laborRate
+      standard: (logistics.travelDays || 2) * 8 * (services.generalLabor || 65),
+      additional: (logistics.generalLaborHours || 0) * (services.generalLabor || 65),
+      total: ((logistics.travelDays || 2) * 8 + (logistics.generalLaborHours || 0)) * (services.generalLabor || 65)
     };
 
-    const result = {
+    const total = travel.cost + hotel.cost + perDiem.cost + labor.total;
+
+    return {
       travel,
       hotel,
       perDiem,
       labor,
       details: {
-        totalDays: standardDays * numberOfTrips,
-        numberOfTrips,
-        totalHours: standardDays * 8 + additionalHours,
+        totalDays: (logistics.travelDays || 2) * (logistics.numberOfTrips || 1),
+        numberOfTrips: logistics.numberOfTrips || 1,
+        totalHours: (logistics.travelDays || 2) * 8 + (logistics.generalLaborHours || 0),
         mileageRate,
-        laborRate
+        laborRate: services.generalLabor || 65
       },
-      total: travel.cost + hotel.cost + perDiem.cost + labor.total
+      total
     };
-
-    console.log('Labor costs calculation result:', result); // Debug log
-
-    return result;
-  }, [logistics, pricing]);
+  }, [estimateData, pricing]);
 };

@@ -1,164 +1,303 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+// src/components/proposals/ProposalForm.jsx
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { VendorDocumentsAccordion } from '../documents';
+import { Editor } from '@tinymce/tinymce-react';
 
-const ProposalForm = ({ estimateData = null }) => {
+const INITIAL_FORM_STATE = {
+  client_id: null,
+  title: '',
+  content: '',
+  total_amount: 0,
+  notes: '',
+  status: 'draft'
+};
+
+const ProposalForm = () => {
   const navigate = useNavigate();
+  const { id } = useParams();
+  const [loading, setLoading] = useState(false);
+  const [clients, setClients] = useState([]);
+  const [formData, setFormData] = useState(INITIAL_FORM_STATE);
+  const [errors, setErrors] = useState({});
   const [currentTab, setCurrentTab] = useState('details');
-  const [selectedDocs, setSelectedDocs] = useState([]);
-  const [formData, setFormData] = useState({
-    clientInfo: {
-      name: estimateData?.clientInfo?.name || '',
-      email: estimateData?.clientInfo?.email || '',
-      phone: estimateData?.clientInfo?.phone || '',
-      address: estimateData?.clientInfo?.projectLocation || ''
-    },
-    projectDetails: {
-      scope: '',
-      timeline: '',
-      terms: '',
-      totalAmount: estimateData?.pricing?.total || 0
-    },
-    notes: ''
-  });
 
+  // Fetch clients and existing proposal (if editing)
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Fetch clients
+        const clientsResponse = await fetch('/api/clients');
+        const clientsData = await clientsResponse.json();
+        setClients(clientsData);
+
+        // If editing, fetch existing proposal
+        if (id) {
+          const proposalResponse = await fetch(`/api/proposals/${id}`);
+          const proposalData = await proposalResponse.json();
+          setFormData(proposalData);
+        }
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      }
+    };
+
+    fetchData();
+  }, [id]);
+
+  // Validate form data
+  const validateForm = () => {
+    const newErrors = {};
+
+    if (!formData.client_id) {
+      newErrors.client_id = 'Client is required';
+    }
+
+    if (!formData.title.trim()) {
+      newErrors.title = 'Title is required';
+    }
+
+    if (!formData.total_amount || formData.total_amount <= 0) {
+      newErrors.total_amount = 'Total amount must be greater than 0';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
-    try {
-      // TODO: Implement proposal submission
-      const proposalData = {
-        ...formData,
-        supportingDocuments: selectedDocs,
-        estimateId: estimateData?.id
-      };
 
-      console.log('Submitting proposal:', proposalData);
-      
-      // Navigate back to proposals list after submission
+    // Validate form
+    if (!validateForm()) return;
+
+    setLoading(true);
+
+    try {
+      const url = id ? `/api/proposals/${id}` : '/api/proposals';
+      const method = id ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(formData)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save proposal');
+      }
+
+      // Redirect to proposals list or proposal detail
       navigate('/proposals');
     } catch (error) {
-      console.error('Error creating proposal:', error);
+      console.error('Error saving proposal:', error);
+      // TODO: Add user-friendly error handling
+    } finally {
+      setLoading(false);
     }
+  };
+
+  // Send proposal
+  const handleSendProposal = async () => {
+    if (!validateForm()) return;
+
+    try {
+      const response = await fetch(`/api/proposals/${id}/send`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to send proposal');
+      }
+
+      navigate('/proposals');
+    } catch (error) {
+      console.error('Error sending proposal:', error);
+      // TODO: Add user-friendly error handling
+    }
+  };
+
+  // Update form data
+  const handleChange = (field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
+      <div className="max-w-7xl mx-auto">
         <Card>
           <CardHeader>
-            <CardTitle>Create New Proposal</CardTitle>
+            <CardTitle>{id ? 'Edit Proposal' : 'Create New Proposal'}</CardTitle>
           </CardHeader>
           <CardContent>
             <Tabs value={currentTab} onValueChange={setCurrentTab}>
-              <TabsList className="grid grid-cols-4 w-full">
-                <TabsTrigger value="details">Project Details</TabsTrigger>
-                <TabsTrigger value="documents">Supporting Documents</TabsTrigger>
+              <TabsList className="grid grid-cols-3 w-full mb-6">
+                <TabsTrigger value="details">Proposal Details</TabsTrigger>
+                <TabsTrigger value="content">Proposal Content</TabsTrigger>
                 <TabsTrigger value="preview">Preview</TabsTrigger>
-                <TabsTrigger value="send">Send Proposal</TabsTrigger>
               </TabsList>
 
-              <TabsContent value="details" className="space-y-6">
-                {/* Client Information */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Client Information</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Name</label>
-                      <input
-                        type="text"
-                        value={formData.clientInfo.name}
-                        onChange={(e) => setFormData({
-                          ...formData,
-                          clientInfo: { ...formData.clientInfo, name: e.target.value }
-                        })}
-                        className="w-full p-2 border rounded"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Email</label>
-                      <input
-                        type="email"
-                        value={formData.clientInfo.email}
-                        onChange={(e) => setFormData({
-                          ...formData,
-                          clientInfo: { ...formData.clientInfo, email: e.target.value }
-                        })}
-                        className="w-full p-2 border rounded"
-                      />
-                    </div>
+              <TabsContent value="details">
+                <form className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Client</label>
+                    <select
+                      value={formData.client_id || ''}
+                      onChange={(e) => handleChange('client_id', e.target.value)}
+                      className={`w-full p-2 border rounded ${errors.client_id ? 'border-red-500' : ''}`}
+                    >
+                      <option value="">Select a client</option>
+                      {clients.map(client => (
+                        <option key={client.id} value={client.id}>
+                          {client.name}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.client_id && (
+                      <p className="text-red-500 text-sm mt-1">{errors.client_id}</p>
+                    )}
                   </div>
-                </div>
 
-                {/* Project Details */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Project Details</h3>
                   <div>
-                    <label className="block text-sm font-medium mb-1">Scope of Work</label>
-                    <textarea
-                      value={formData.projectDetails.scope}
-                      onChange={(e) => setFormData({
-                        ...formData,
-                        projectDetails: { ...formData.projectDetails, scope: e.target.value }
-                      })}
-                      className="w-full p-2 border rounded h-32"
+                    <label className="block text-sm font-medium mb-1">Proposal Title</label>
+                    <input
+                      type="text"
+                      value={formData.title}
+                      onChange={(e) => handleChange('title', e.target.value)}
+                      className={`w-full p-2 border rounded ${errors.title ? 'border-red-500' : ''}`}
+                      placeholder="Enter proposal title"
                     />
+                    {errors.title && (
+                      <p className="text-red-500 text-sm mt-1">{errors.title}</p>
+                    )}
                   </div>
+
                   <div>
-                    <label className="block text-sm font-medium mb-1">Timeline</label>
+                    <label className="block text-sm font-medium mb-1">Total Amount</label>
+                    <input
+                      type="number"
+                      value={formData.total_amount}
+                      onChange={(e) => handleChange('total_amount', parseFloat(e.target.value))}
+                      className={`w-full p-2 border rounded ${errors.total_amount ? 'border-red-500' : ''}`}
+                      placeholder="Enter total project amount"
+                    />
+                    {errors.total_amount && (
+                      <p className="text-red-500 text-sm mt-1">{errors.total_amount}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Notes</label>
                     <textarea
-                      value={formData.projectDetails.timeline}
-                      onChange={(e) => setFormData({
-                        ...formData,
-                        projectDetails: { ...formData.projectDetails, timeline: e.target.value }
-                      })}
+                      value={formData.notes}
+                      onChange={(e) => handleChange('notes', e.target.value)}
                       className="w-full p-2 border rounded h-24"
+                      placeholder="Additional notes or comments"
                     />
                   </div>
-                </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Status</label>
+                    <select
+                      value={formData.status}
+                      onChange={(e) => handleChange('status', e.target.value)}
+                      className="w-full p-2 border rounded"
+                    >
+                      <option value="draft">Draft</option>
+                      <option value="sent">Sent</option>
+                      <option value="accepted">Accepted</option>
+                      <option value="rejected">Rejected</option>
+                    </select>
+                  </div>
+                </form>
               </TabsContent>
 
-              <TabsContent value="documents">
-                <VendorDocumentsAccordion
-                  selectedDocs={selectedDocs}
-                  onDocumentsSelect={setSelectedDocs}
-                />
+              <TabsContent value="content">
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">Proposal Content</h3>
+                  <Editor
+                    apiKey={import.meta.env.VITE_TINYMCE_API_KEY}
+                    init={{
+                      height: 500,
+                      menubar: true,
+                      plugins: [
+                        'advlist', 'autolink', 'lists', 'link', 'image', 
+                        'charmap', 'preview', 'anchor', 'searchreplace', 
+                        'visualblocks', 'code', 'fullscreen',
+                        'insertdatetime', 'media', 'table', 'help', 'wordcount'
+                      ],
+                      toolbar: 'undo redo | blocks | ' +
+                        'bold italic forecolor | alignleft aligncenter ' +
+                        'alignright alignjustify | bullist numlist outdent indent | ' +
+                        'removeformat | help'
+                    }}
+                    value={formData.content}
+                    onEditorChange={(content) => handleChange('content', content)}
+                  />
+                </div>
               </TabsContent>
 
               <TabsContent value="preview">
-                {/* TODO: Add proposal preview */}
                 <div className="bg-gray-50 p-6 rounded">
-                  <h3 className="text-lg font-medium mb-4">Preview coming soon...</h3>
-                  {/* Add preview content */}
-                </div>
-              </TabsContent>
-
-              <TabsContent value="send">
-                <div className="space-y-6">
-                  <div>
-                    <h3 className="text-lg font-medium mb-4">Send Proposal</h3>
-                    <p className="text-gray-600">
-                      Review your proposal details before sending to {formData.clientInfo.name}
-                    </p>
-                  </div>
-
-                  <div className="flex justify-end space-x-4">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => navigate('/proposals')}
-                    >
-                      Cancel
-                    </Button>
-                    <Button onClick={handleSubmit}>
-                      Send Proposal
-                    </Button>
-                  </div>
+                  <h3 className="text-xl font-semibold mb-4">Proposal Preview</h3>
+                  <div className="prose max-w-none" dangerouslySetInnerHTML={{__html: formData.content}} />
                 </div>
               </TabsContent>
             </Tabs>
+
+            <div className="mt-6 flex justify-end space-x-4">
+              <Button 
+                type="button"
+                variant="outline"
+                onClick={() => navigate('/proposals')}
+              >
+                Cancel
+              </Button>
+              {currentTab === 'details' && (
+                <Button 
+                  type="button"
+                  onClick={() => setCurrentTab('content')}
+                >
+                  Next: Edit Content
+                </Button>
+              )}
+              {currentTab === 'content' && (
+                <Button 
+                  type="button"
+                  onClick={() => setCurrentTab('preview')}
+                >
+                  Preview
+                </Button>
+              )}
+              {currentTab === 'preview' && (
+                <Button 
+                  type="submit"
+                  onClick={handleSubmit}
+                  disabled={loading}
+                >
+                  {loading ? 'Saving...' : 'Save Proposal'}
+                </Button>
+              )}
+              {id && formData.status === 'draft' && (
+                <Button 
+                  type="button"
+                  onClick={handleSendProposal}
+                >
+                  Send Proposal
+                </Button>
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>

@@ -1,11 +1,14 @@
- 
-// BasketballEquipment.jsx
+// src/components/estimator/sections/EquipmentSection/BasketballEquipment.jsx
 import React from 'react';
 import { NumberInput } from '@/components/ui/number-input';
+import { Select } from '@/components/ui/select';
 
-export const BasketballSystems = ({ systems = [], onChange }) => {
+export const BasketballSystems = ({ systems = [], onChange, error }) => {
+  // Ensure systems is always an array
+  const currentSystems = Array.isArray(systems) ? systems : [];
+
   const addSystem = () => {
-    onChange([...systems, {
+    onChange([...currentSystems, {
       type: 'adjustable',
       extension: 4,
       mounted: 'ground'
@@ -13,16 +16,16 @@ export const BasketballSystems = ({ systems = [], onChange }) => {
   };
 
   const updateSystem = (index, field, value) => {
-    const updatedSystems = [...systems];
+    const updatedSystems = [...currentSystems];
     updatedSystems[index] = {
       ...updatedSystems[index],
-      [field]: value
+      [field]: field === 'extension' ? Number(value) : value
     };
     onChange(updatedSystems);
   };
 
   const removeSystem = (index) => {
-    onChange(systems.filter((_, i) => i !== index));
+    onChange(currentSystems.filter((_, i) => i !== index));
   };
 
   return (
@@ -32,58 +35,56 @@ export const BasketballSystems = ({ systems = [], onChange }) => {
         <button
           onClick={addSystem}
           className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+          type="button"
         >
           Add System
         </button>
       </div>
 
-      {systems.map((system, index) => (
+      {currentSystems.map((system, index) => (
         <div key={index} className="border p-4 rounded space-y-3">
           <div className="flex justify-between">
-            <h5 className="font-medium">System {index + 1}</h5>
+            <div className="flex-1">
+              <Select
+                label="System Type"
+                value={system.type}
+                onChange={(value) => updateSystem(index, 'type', value)}
+                options={[
+                  { value: 'adjustable', label: 'Adjustable' },
+                  { value: 'fixed', label: 'Fixed' }
+                ]}
+              />
+            </div>
             <button
               onClick={() => removeSystem(index)}
-              className="text-red-500 hover:text-red-700"
+              className="ml-2 text-red-500 hover:text-red-700"
             >
               Remove
             </button>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Type</label>
-              <select
-                value={system.type}
-                onChange={(e) => updateSystem(index, 'type', e.target.value)}
-                className="w-full p-2 border rounded"
-              >
-                <option value="adjustable">Adjustable Height</option>
-                <option value="fixed">Fixed Height</option>
-              </select>
-            </div>
-
+            <Select
+              label="Mounting Type"
+              value={system.mounted}
+              onChange={(value) => updateSystem(index, 'mounted', value)}
+              options={[
+                { value: 'ground', label: 'Ground Mount' },
+                { value: 'wall', label: 'Wall Mount' }
+              ]}
+            />
             <NumberInput
-              label="Extension Length (ft)"
+              label="Extension (ft)"
               value={system.extension}
               onChange={(value) => updateSystem(index, 'extension', value)}
               min={4}
               max={8}
+              error={error?.extension}
             />
-
-            <div>
-              <label className="block text-sm font-medium mb-1">Mounting</label>
-              <select
-                value={system.mounted}
-                onChange={(e) => updateSystem(index, 'mounted', e.target.value)}
-                className="w-full p-2 border rounded"
-              >
-                <option value="ground">Ground Mount</option>
-                <option value="wall">Wall Mount</option>
-              </select>
-            </div>
           </div>
         </div>
       ))}
+      {error && <p className="text-sm text-red-500 mt-1">{error}</p>}
     </div>
   );
 };

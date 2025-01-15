@@ -1,68 +1,82 @@
 // src/hooks/useMaterialsCosts.js
 import { useMemo } from 'react';
+import { COURT_DIMENSIONS } from '@/constants/courts';
 
-export const useMaterialsCosts = (surfaceSystem, dimensions, pricing) => {
+export const useMaterialsCosts = (estimateData, pricing) => {
   return useMemo(() => {
-    if (!surfaceSystem || !dimensions || !pricing) return {};
+    if (!estimateData || !pricing) {
+      return {
+        details: {},
+        subtotals: {},
+        total: 0
+      };
+    }
 
-    const squareFootage = dimensions.squareFootage || 0;
+    // Ensure we have the required pricing structures
+    const materials = pricing.materials || {};
+    const services = pricing.services || {};
     
-    // Calculate acid wash if needed
-    const acidWashCost = surfaceSystem.needsAcidWash ? 
-      squareFootage * (pricing.services?.acidWash || 0) : 0;
+    // Add some debug logging
+    console.log('Materials pricing:', materials);
+    console.log('Services pricing:', services);
 
-    // Calculate resurfacer costs
+    // Use square footage or calculate from dimensions
+    const squareFootage = estimateData.square_footage ||
+                          (estimateData.length * estimateData.width) || 0;
+
+    // Acid Wash Calculation
+    const acidWashCost = estimateData.needs_acid_wash ?
+      squareFootage * (services.acidWash || 0) : 0;
+
+    // Resurfacer Calculation
     const resurfacer = {
       gallonsNeeded: Math.ceil((squareFootage / 125) * 1.5 * 2),
       drumsRequired: Math.ceil((squareFootage / 125) * 1.5 * 2 / 30),
-      cost: Math.ceil((squareFootage / 125) * 1.5 * 2 / 30) * ((pricing.materials?.acrylicResurfacer || 0) * 30)
+      cost: Math.ceil((squareFootage / 125) * 1.5 * 2 / 30) *
+            ((materials.acrylicResurfacer || 0) * 30)
     };
 
-    // Calculate color coating costs
-    const colorCoating = {
-      gallonsNeeded: Math.ceil((squareFootage / 125) * 1.5 * 2),
-      drumsRequired: Math.ceil((squareFootage / 125) * 1.5 * 2 / 30),
-      cost: Math.ceil((squareFootage / 125) * 1.5 * 2 / 30) * ((pricing.materials?.colorCoating || 0) * 30)
-    };
-
-    // Calculate patch work costs
-    const patchWork = surfaceSystem.patchWork?.needed ? {
+    // Patch Work Calculation
+    const patchWork = estimateData.patch_work_needed ? {
       binder: {
-        gallons: surfaceSystem.patchWork.estimatedGallons,
-        cost: (surfaceSystem.patchWork.estimatedGallons / 5) * pricing.materials.cpb
-      },
-      sand: {
-        bags: Math.ceil(surfaceSystem.patchWork.estimatedGallons / 3 * 2),
-        cost: Math.ceil(surfaceSystem.patchWork.estimatedGallons / 3 * 2) * pricing.materials.sand
-      },
-      cement: {
-        quarts: Math.ceil(surfaceSystem.patchWork.estimatedGallons),
-        cost: (Math.ceil(surfaceSystem.patchWork.estimatedGallons) / 48) * pricing.materials.cement
+        gallons: estimateData.patch_work_gallons || 0,
+        cost: (estimateData.patch_work_gallons / 5) * (materials.cpb || 0)
       },
       crackFiller: {
         minor: {
-          gallons: surfaceSystem.patchWork.minorCrackGallons,
-          cost: surfaceSystem.patchWork.minorCrackGallons * pricing.materials.minorCracks
+          gallons: estimateData.minor_crack_gallons || 0,
+          cost: (estimateData.minor_crack_gallons || 0) * (materials.minorCracks || 0)
         },
         major: {
-          gallons: surfaceSystem.patchWork.majorCrackGallons,
-          cost: surfaceSystem.patchWork.majorCrackGallons * pricing.materials.majorCracks
+          gallons: estimateData.major_crack_gallons || 0,
+          cost: (estimateData.major_crack_gallons || 0) * (materials.majorCracks || 0)
         }
       }
     } : null;
 
-    // Calculate subtotals
+    // Fiberglass Calculation
+    const fiberglass = estimateData.fiberglass_mesh_needed ? {
+      area: estimateData.fiberglass_mesh_area || 0,
+      cost: (estimateData.fiberglass_mesh_area || 0) * (materials.fiberglassMesh || 0)
+    } : null;
+
+    // Cushion System Calculation
+    const cushion = estimateData.cushion_system_needed ? {
+      area: estimateData.cushion_system_area || 0,
+      cost: (estimateData.cushion_system_area || 0) * (materials.cushionSystem || 0)
+    } : null;
+
     const subtotals = {
       acidWash: acidWashCost,
       patchWork: patchWork ? (
         patchWork.binder.cost +
-        patchWork.sand.cost +
-        patchWork.cement.cost +
         patchWork.crackFiller.minor.cost +
         patchWork.crackFiller.major.cost
       ) : 0,
       resurfacer: resurfacer.cost,
-      colorCoating: colorCoating.cost
+      colorCoating: (squareFootage / 125) * 1.5 * 2 * (materials.colorCoating || 0),
+      fiberglass: fiberglass?.cost || 0,
+      cushion: cushion?.cost || 0
     };
 
     return {
@@ -70,10 +84,15 @@ export const useMaterialsCosts = (surfaceSystem, dimensions, pricing) => {
         acidWash: { cost: acidWashCost },
         patchWork,
         resurfacer,
-        colorCoating
+        colorCoating: {
+          gallonsNeeded: Math.ceil((squareFootage / 125) * 1.5 * 2),
+          cost: subtotals.colorCoating
+        },
+        fiberglass,
+        cushion
       },
       subtotals,
       total: Object.values(subtotals).reduce((sum, cost) => sum + cost, 0)
     };
-  }, [surfaceSystem, dimensions, pricing]);
+  }, [estimateData, pricing]);
 };

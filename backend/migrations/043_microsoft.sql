@@ -1,0 +1,2 @@
+ALTER TABLE emails 
+ADD COLUMN microsoft_id VARCHAR(255) UNIQUE;

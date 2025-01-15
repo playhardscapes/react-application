@@ -2,6 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
+.transition-colors {
+        background-color: #ffffff;
+}
+
+
 @layer base {
  :root {
    --background: 0 0% 100%;
@@ -74,3 +79,4 @@
    @apply bg-background text-foreground;
  }
 }
+

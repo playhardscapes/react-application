@@ -34,3 +34,5 @@ coverage/
 *.log
 frontend/shadcn-temp
 frontend/shadcn-temp
+
+.codegpt

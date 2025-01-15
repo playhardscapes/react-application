@@ -67,28 +67,64 @@ const validateClientInfo = (clientInfo) => {
   return errors;
 };
 
-const validateSurfaceSystem = (surfaceSystem, dimensions) => {
+// src/utils/validation.js - Update the validateSurfaceSystem function
+
+// Make validateSurfaceSystem a public export
+export const validateSurfaceSystem = (surfaceSystem, dimensions) => {
   const errors = {};
   const totalArea = dimensions.squareFootage || 0;
 
-  if (surfaceSystem.fiberglassMesh?.needed) {
-    const areaError = validateArea(surfaceSystem.fiberglassMesh.area, totalArea);
-    if (areaError) errors.fiberglassMesh = areaError;
+  // Patch Work validation
+  if (surfaceSystem.patch_work_needed) {
+    if (!surfaceSystem.patch_work_gallons || surfaceSystem.patch_work_gallons <= 0) {
+      errors.patch_work_gallons = 'Patch work gallons required';
+    }
+
+    if (surfaceSystem.minor_crack_gallons < 0) {
+      errors.minor_crack_gallons = 'Cannot be negative';
+    }
+
+    if (surfaceSystem.major_crack_gallons < 0) {
+      errors.major_crack_gallons = 'Cannot be negative';
+    }
+
+    // Validate total gallons doesn't exceed reasonable amount
+    const totalGallons = (surfaceSystem.patch_work_gallons || 0) + 
+                        (surfaceSystem.minor_crack_gallons || 0) + 
+                        (surfaceSystem.major_crack_gallons || 0);
+                        
+    if (totalGallons > totalArea / 20) { // 1 gallon covers ~20 sq ft
+      errors.patch_work_gallons = 'Total gallons exceeds reasonable amount for court size';
+    }
   }
 
-  if (surfaceSystem.cushionSystem?.needed) {
-    const areaError = validateArea(surfaceSystem.cushionSystem.area, totalArea);
-    if (areaError) errors.cushionSystem = areaError;
+  // Fiberglass Mesh validation
+  if (surfaceSystem.fiberglass_mesh_needed) {
+    if (!surfaceSystem.fiberglass_mesh_area || surfaceSystem.fiberglass_mesh_area <= 0) {
+      errors.fiberglass_mesh_area = 'Area required';
+    } else if (surfaceSystem.fiberglass_mesh_area > totalArea) {
+      errors.fiberglass_mesh_area = 'Area cannot exceed court size';
+    }
+  }
+
+  // Cushion System validation
+  if (surfaceSystem.cushion_system_needed) {
+    if (!surfaceSystem.cushion_system_area || surfaceSystem.cushion_system_area <= 0) {
+      errors.cushion_system_area = 'Area required';
+    } else if (surfaceSystem.cushion_system_area > totalArea) {
+      errors.cushion_system_area = 'Area cannot exceed court size';
+    }
   }
 
   return errors;
 };
 
+
 const validateLogistics = (logistics) => {
   const errors = {};
 
-  if (!logistics.estimatedDays || logistics.estimatedDays < 1) {
-    errors.estimatedDays = 'Must have at least 1 day';
+  if (logistics.travelDays === undefined || logistics.travelDays < 1) {
+    errors.travelDays = 'Must have at least 1 day';
   }
 
   if (!logistics.numberOfTrips || logistics.numberOfTrips < 1) {

@@ -128,4 +128,14 @@ const ProposalPreview = ({ proposal, onSend }) => {
               <ol>
                 <li>Review the proposal details and included documents</li>
                 <li>Sign and return the attached agreement</li>
-                <li>Submit
+                <li>Submit your acceptance by replying to this proposal</li>
+              </ol>
+            </div>
+          </section>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+export default ProposalPreview;

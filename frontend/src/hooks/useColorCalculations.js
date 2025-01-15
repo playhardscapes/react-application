@@ -5,41 +5,20 @@ const COVERAGE_RATE = 125; // sq ft per gallon
 const WASTE_FACTOR = 1.5;
 const COATS = 2;
 
-// Standard court dimensions
-const COURT_DIMENSIONS = {
-  tennis: {
-    width: 36,
-    length: 78
-  },
-  pickleball: {
-    court: {
-      width: 20,
-      length: 30
-    },
-    kitchen: {
-      width: 20,
-      length: 14
-    }
-  },
-  basketball: {
-    half: {
-      width: 50,
-      length: 50
-    },
-    full: {
-      width: 50,
-      length: 100
-    }
-  }
-};
-
 export const useColorCalculations = (projectData, pricing) => {
   return useMemo(() => {
-    const { courtConfig, dimensions } = projectData;
-    const colorTotals = {};
+    if (!projectData || !pricing) {
+      return {
+        resurfacer: {},
+        tennis: null,
+        pickleball: null,
+        basketball: null,
+        apron: null,
+        colorTotals: {}
+      };
+    }
 
-    // Total project area
-    const totalArea = dimensions.length * dimensions.width;
+    const totalArea = (projectData.length || 0) * (projectData.width || 0);
     console.log('Total project area:', totalArea);
 
     const calculateGallons = (sqFt) => Math.ceil((sqFt / COVERAGE_RATE) * WASTE_FACTOR * COATS);
@@ -48,66 +27,45 @@ export const useColorCalculations = (projectData, pricing) => {
     let totalCourtArea = 0;
 
     // Tennis Court Calculations
-    const tennis = courtConfig.sports?.tennis?.selected ? {
-      area: COURT_DIMENSIONS.tennis.length * COURT_DIMENSIONS.tennis.width * 
-            (courtConfig.sports.tennis.courtCount || 1),
+    const tennis = projectData.tennis_courts > 0 ? {
+      area: COURT_DIMENSIONS.tennis.length * COURT_DIMENSIONS.tennis.width * projectData.tennis_courts,
       gallonsNeeded: calculateGallons(
-        COURT_DIMENSIONS.tennis.length * COURT_DIMENSIONS.tennis.width * 
-        (courtConfig.sports.tennis.courtCount || 1)
+        COURT_DIMENSIONS.tennis.length * COURT_DIMENSIONS.tennis.width * projectData.tennis_courts
       ),
-      color: courtConfig.sports.tennis.colors?.court
+      color: projectData.tennis_court_color
     } : null;
 
     if (tennis) totalCourtArea += tennis.area;
 
     // Pickleball Court Calculations
-    const pickleball = courtConfig.sports?.pickleball?.selected ? {
+    const pickleball = projectData.pickleball_courts > 0 ? {
       kitchen: {
         area: COURT_DIMENSIONS.pickleball.kitchen.length * 
               COURT_DIMENSIONS.pickleball.kitchen.width *
-              (courtConfig.sports.pickleball.courtCount || 1),
+              projectData.pickleball_courts,
         gallonsNeeded: calculateGallons(
           COURT_DIMENSIONS.pickleball.kitchen.length * 
           COURT_DIMENSIONS.pickleball.kitchen.width *
-          (courtConfig.sports.pickleball.courtCount || 1)
+          projectData.pickleball_courts
         ),
-        color: courtConfig.sports.pickleball.colors?.kitchen
+        color: projectData.pickleball_kitchen_color
       },
       court: {
         area: COURT_DIMENSIONS.pickleball.court.length * 
               COURT_DIMENSIONS.pickleball.court.width *
-              (courtConfig.sports.pickleball.courtCount || 1),
+              projectData.pickleball_courts,
         gallonsNeeded: calculateGallons(
           COURT_DIMENSIONS.pickleball.court.length * 
           COURT_DIMENSIONS.pickleball.court.width *
-          (courtConfig.sports.pickleball.courtCount || 1)
+          projectData.pickleball_courts
         ),
-        color: courtConfig.sports.pickleball.colors?.court
+        color: projectData.pickleball_court_color
       }
     } : null;
 
     if (pickleball) {
       totalCourtArea += pickleball.kitchen.area + pickleball.court.area;
     }
-
-    // Basketball Court Calculations
-    const basketball = courtConfig.sports?.basketball?.selected ? {
-      area: COURT_DIMENSIONS.basketball[
-        courtConfig.sports.basketball.courtType || 'half'
-      ].length * COURT_DIMENSIONS.basketball[
-        courtConfig.sports.basketball.courtType || 'half'
-      ].width,
-      gallonsNeeded: calculateGallons(
-        COURT_DIMENSIONS.basketball[
-          courtConfig.sports.basketball.courtType || 'half'
-        ].length * COURT_DIMENSIONS.basketball[
-          courtConfig.sports.basketball.courtType || 'half'
-        ].width
-      ),
-      color: courtConfig.sports.basketball.colors?.court
-    } : null;
-
-    if (basketball) totalCourtArea += basketball.area;
 
     // Calculate resurfacer for total area
     const resurfacer = {
@@ -118,24 +76,16 @@ export const useColorCalculations = (projectData, pricing) => {
     };
 
     // Apron (remaining area)
-    const apronArea = totalArea - totalCourtArea;
-    const apron = courtConfig.apron?.color ? {
+    const apronArea = Math.max(0, totalArea - totalCourtArea);
+    const apron = projectData.apron_color ? {
       area: apronArea,
       gallonsNeeded: calculateGallons(apronArea),
-      color: courtConfig.apron.color
+      color: projectData.apron_color
     } : null;
 
-    // Debug logs
-    console.log({
-      totalArea,
-      totalCourtArea,
-      apronArea,
-      tennisArea: tennis?.area,
-      pickleballArea: pickleball ? pickleball.kitchen.area + pickleball.court.area : 0,
-      basketballArea: basketball?.area
-    });
-
     // Calculate totals by color
+    const colorTotals = {};
+    
     const addToColorTotals = (color, gallons) => {
       if (color && gallons) {
         colorTotals[color] = (colorTotals[color] || 0) + gallons;
@@ -147,14 +97,12 @@ export const useColorCalculations = (projectData, pricing) => {
       addToColorTotals(pickleball.kitchen.color, pickleball.kitchen.gallonsNeeded);
       addToColorTotals(pickleball.court.color, pickleball.court.gallonsNeeded);
     }
-    if (basketball) addToColorTotals(basketball.color, basketball.gallonsNeeded);
     if (apron) addToColorTotals(apron.color, apron.gallonsNeeded);
 
     return {
       resurfacer,
       tennis,
       pickleball,
-      basketball,
       apron,
       colorTotals
     };

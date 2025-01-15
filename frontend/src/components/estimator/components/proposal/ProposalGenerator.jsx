@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Alert } from '@/components/ui/alert';
 import { formatCurrency } from '@/utils/formatting';
 
-export const ProposalGenerator = ({ projectData, onGenerated }) => {
+const ProposalGenerator = ({ projectData, onGenerated }) => {
   const [selectedSections, setSelectedSections] = useState({
     clientInfo: true,
     projectDetails: true,
@@ -49,10 +49,10 @@ export const ProposalGenerator = ({ projectData, onGenerated }) => {
       console.log('Sending data to backend:', {
         projectData,
         selectedSections,
-        model: aiModel // Changed from selectedModel to aiModel
+        model: aiModel
       });
 
-      const response = await fetch('http://localhost:5000/api/proposal/generate', {
+      const response = await fetch('/api/proposal/generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -60,7 +60,7 @@ export const ProposalGenerator = ({ projectData, onGenerated }) => {
         body: JSON.stringify({
           projectData,
           selectedSections,
-          model: aiModel // Changed from selectedModel to aiModel
+          model: aiModel
         }),
       });
 
@@ -72,7 +72,7 @@ export const ProposalGenerator = ({ projectData, onGenerated }) => {
       console.log('Received response:', data);
       
       if (data.content) {
-        onGenerated(data.content);
+        onGenerated && onGenerated(data.content);
       } else {
         throw new Error('No content received from API');
       }
@@ -85,7 +85,7 @@ export const ProposalGenerator = ({ projectData, onGenerated }) => {
   };
 
   return (
-      <div className="space-y-6">
+    <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Generate Proposal</h2>
         <div className="space-x-4">
@@ -100,12 +100,13 @@ export const ProposalGenerator = ({ projectData, onGenerated }) => {
           </select>
         </div>
       </div>
- {/* Add the error alert here */}
- {error && (
+
+      {error && (
         <Alert variant="destructive" className="mb-4">
           {error}
         </Alert>
       )}
+
       <div className="grid grid-cols-2 gap-6">
         {/* Client Information */}
         <Card className="p-4">
@@ -118,159 +119,55 @@ export const ProposalGenerator = ({ projectData, onGenerated }) => {
           </div>
           {selectedSections.clientInfo && (
             <div className="space-y-2 text-sm">
-              <div><strong>Name:</strong> {projectData.clientInfo.name}</div>
-              <div><strong>Email:</strong> {projectData.clientInfo.email}</div>
-              <div><strong>Phone:</strong> {projectData.clientInfo.phone}</div>
-              <div><strong>Location:</strong> {projectData.clientInfo.projectLocation}</div>
-              {projectData.clientInfo.keyNotes && (
-                <div><strong>Notes:</strong> {projectData.clientInfo.keyNotes}</div>
-              )}
+              <div><strong>Name:</strong> {projectData.client_name}</div>
+              <div><strong>Email:</strong> {projectData.client_email}</div>
+              <div><strong>Phone:</strong> {projectData.client_phone}</div>
+              <div><strong>Location:</strong> {projectData.project_location}</div>
             </div>
           )}
         </Card>
 
-        {/* Court Configuration */}
+        {/* Project Details */}
         <Card className="p-4">
           <div className="flex items-start justify-between mb-4">
-            <h3 className="text-lg font-semibold">Court Specifications</h3>
+            <h3 className="text-lg font-semibold">Project Specifications</h3>
             <Checkbox
-              checked={selectedSections.courtSpecs}
-              onCheckedChange={() => toggleSection('courtSpecs')}
+              checked={selectedSections.projectDetails}
+              onCheckedChange={() => toggleSection('projectDetails')}
             />
           </div>
-          {selectedSections.courtSpecs && (
+          {selectedSections.projectDetails && (
             <div className="space-y-2 text-sm">
-              <div><strong>Dimensions:</strong> {projectData.dimensions.length}' × {projectData.dimensions.width}'</div>
-              <div><strong>Total Area:</strong> {projectData.dimensions.squareFootage} sq ft</div>
-              {projectData.surfaceSystem.needsPressureWash && (
-                <div>• Pressure wash surface preparation</div>
-              )}
-              {projectData.surfaceSystem.needsAcidWash && (
-                <div>• Acid wash treatment</div>
-              )}
-              {projectData.surfaceSystem.patchWork.needed && (
-                <div>• Patch work required ({projectData.surfaceSystem.patchWork.estimatedGallons} gallons)</div>
-              )}
+              <div><strong>Dimensions:</strong> {projectData.length}' × {projectData.width}'</div>
+              <div><strong>Total Area:</strong> {projectData.square_footage} sq ft</div>
             </div>
           )}
         </Card>
+      </div>
 
-        {/* Materials & Colors */}
-        <Card className="p-4">
-          <div className="flex items-start justify-between mb-4">
-            <h3 className="text-lg font-semibold">Materials & Colors</h3>
-            <Checkbox
-              checked={selectedSections.materials}
-              onCheckedChange={() => toggleSection('materials')}
-            />
-          </div>
-          {selectedSections.materials && (
-            <div className="space-y-2 text-sm">
-              <div><strong>Surface System:</strong></div>
-              <div>• Acrylic Resurfacer</div>
-              <div>• Color Coating System</div>
-              {projectData.courtConfig.sports?.tennis?.selected && (
-                <div>• Tennis Court Color: {projectData.courtConfig.sports.tennis.colors?.court}</div>
-              )}
-              {projectData.courtConfig.sports?.pickleball?.selected && (
-                <>
-                  <div>• Pickleball Kitchen: {projectData.courtConfig.sports.pickleball.colors?.kitchen}</div>
-                  <div>• Pickleball Court: {projectData.courtConfig.sports.pickleball.colors?.court}</div>
-                </>
-              )}
-            </div>
-          )}
-        </Card>
-
-        {/* Equipment */}
-        <Card className="p-4">
-          <div className="flex items-start justify-between mb-4">
-            <h3 className="text-lg font-semibold">Equipment</h3>
-            <Checkbox
-              checked={selectedSections.equipment}
-              onCheckedChange={() => toggleSection('equipment')}
-            />
-          </div>
-          {selectedSections.equipment && (
-            <div className="space-y-2 text-sm">
-              {projectData.equipment.permanentTennisPoles > 0 && (
-                <div>• {projectData.equipment.permanentTennisPoles} Tennis Net Post Sets</div>
-              )}
-              {projectData.equipment.permanentPickleballPoles > 0 && (
-                <div>• {projectData.equipment.permanentPickleballPoles} Pickleball Net Post Sets</div>
-              )}
-              {projectData.equipment.mobilePickleballNets > 0 && (
-                <div>• {projectData.equipment.mobilePickleballNets} Mobile Pickleball Nets</div>
-              )}
-              {projectData.equipment.basketballSystems?.length > 0 && (
-                <div>• {projectData.equipment.basketballSystems.length} Basketball Systems</div>
-              )}
-            </div>
-          )}
-        </Card>
-
-        {/* Logistics */}
-        <Card className="p-4">
-          <div className="flex items-start justify-between mb-4">
-            <h3 className="text-lg font-semibold">Project Logistics</h3>
-            <Checkbox
-              checked={selectedSections.logistics}
-              onCheckedChange={() => toggleSection('logistics')}
-            />
-          </div>
-          {selectedSections.logistics && (
-            <div className="space-y-2 text-sm">
-              <div><strong>Estimated Days:</strong> {projectData.logistics.estimatedDays}</div>
-              <div><strong>Number of Trips:</strong> {projectData.logistics.numberOfTrips}</div>
-              <div><strong>Travel Distance:</strong> {projectData.logistics.distanceToSite} miles</div>
-              {projectData.logistics.logisticalNotes && (
-                <div><strong>Notes:</strong> {projectData.logistics.logisticalNotes}</div>
-              )}
-            </div>
-          )}
-        </Card>
-
-        {/* Pricing */}
-        <Card className="p-4">
-          <div className="flex items-start justify-between mb-4">
-            <h3 className="text-lg font-semibold">Pricing Details</h3>
-            <Checkbox
-              checked={selectedSections.pricing}
-              onCheckedChange={() => toggleSection('pricing')}
-            />
-          </div>
-          {selectedSections.pricing && (
-            <div className="space-y-2 text-sm">
-              <div><strong>Base Cost:</strong> {formatCurrency(projectData.baseCost || 0)}</div>
-              <div><strong>Margin:</strong> {formatCurrency(projectData.margin || 0)}</div>
-              <div><strong>Total Investment:</strong> {formatCurrency(projectData.totalCost || 0)}</div>
-              <div><strong>Per Square Foot:</strong> {formatCurrency((projectData.totalCost || 0) / (projectData.dimensions.squareFootage || 1))}</div>
-            </div>
-          )}
-        </Card>
-        </div>
-
-<div className="flex justify-end space-x-4">
-  <Button
-    variant="outline"
-    onClick={handleUncheckAll}
-  >
-    Uncheck All
-  </Button>
-  <Button
-    variant="outline"
-    onClick={handleCheckAll}
-  >
-    Check All
-  </Button>
-  <Button
-    onClick={handleGenerate}
-    disabled={generating}
-    className="px-6"
-  >
-    {generating ? 'Generating...' : 'Generate Professional Proposal'}
-  </Button>
-</div>
-</div>
-);
+      <div className="flex justify-end space-x-4 mt-4">
+        <Button
+          variant="outline"
+          onClick={handleUncheckAll}
+        >
+          Uncheck All
+        </Button>
+        <Button
+          variant="outline"
+          onClick={handleCheckAll}
+        >
+          Check All
+        </Button>
+        <Button
+          onClick={handleGenerate}
+          disabled={generating}
+          className="px-6"
+        >
+          {generating ? 'Generating...' : 'Generate Proposal'}
+        </Button>
+      </div>
+    </div>
+  );
 };
+
+export default ProposalGenerator;
