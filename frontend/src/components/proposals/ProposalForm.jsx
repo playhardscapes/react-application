@@ -5,6 +5,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Editor } from '@tinymce/tinymce-react';
+import { PageContainer } from '@/components/layout/PageContainer';
 
 const INITIAL_FORM_STATE = {
   client_id: null,
@@ -134,8 +135,7 @@ const ProposalForm = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white p-6">
-      <div className="max-w-7xl mx-auto">
+    <PageContainer>
         <Card>
           <CardHeader>
             <CardTitle>{id ? 'Edit Proposal' : 'Create New Proposal'}</CardTitle>
@@ -300,8 +300,7 @@ const ProposalForm = () => {
             </div>
           </CardContent>
         </Card>
-      </div>
-    </div>
+    </PageContainer>
   );
 };
 

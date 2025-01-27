@@ -2,9 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-.transition-colors {
-        background-color: #ffffff;
-}
+
 
 
 @layer base {
@@ -80,3 +78,47 @@
  }
 }
 
+@layer components {
+  .prose code {
+    @apply bg-black/5 rounded px-1.5 py-0.5 font-mono text-sm;
+  }
+
+  .prose h3 {
+    @apply text-xl font-semibold mt-6 mb-3;
+  }
+
+  .prose ul {
+    @apply list-disc pl-6 mb-4;
+  }
+
+  .prose ul ul {
+    @apply mt-2;
+  }
+
+  .prose p {
+    @apply mb-2;
+  }
+
+  .prose li {
+    @apply mb-1;
+  }
+}
+
+:root {
+  --popover: 0 0% 100%;
+  --popover-foreground: 240 10% 3.9%;
+}
+
+.dark {
+  --popover: 240 10% 3.9%;
+  --popover-foreground: 0 0% 98%;
+}
+
+.bg-gray-50 {
+  --tw-bg-opacity: 1;
+  background-color: #ffffff;
+}
+.bg-primary {
+  background-color: rgb(37 99 235);
+  color:#ffffff;
+}

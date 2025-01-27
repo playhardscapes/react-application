@@ -2,6 +2,9 @@ import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/components/ui/use-toast';
+import { PageContainer } from '@/components/layout/PageContainer';
 
 const CLIENT_TYPES = ['business', 'individual', 'organization'];
 const CONTACT_METHODS = ['email', 'phone', 'both'];
@@ -9,6 +12,8 @@ const CONTACT_METHODS = ['email', 'phone', 'both'];
 const ClientForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { token } = useAuth();
+  const { toast } = useToast();
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState(null);
   const [formData, setFormData] = React.useState({
@@ -22,53 +27,130 @@ const ClientForm = () => {
     type: 'business',
     preferred_contact_method: 'email',
     source: '',
+    notes: '',
     initial_follow_up: {
       date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       notes: ''
     }
   });
 
+  // Redirect to login if no token
   React.useEffect(() => {
-    if (id) {
-      const fetchClient = async () => {
-        try {
-          const response = await fetch(`/api/clients/${id}`);
-          const data = await response.json();
-          setFormData({
-            ...data,
-            initial_follow_up: {
-              date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-              notes: ''
-            }
-          });
-        } catch (error) {
-          console.error('Error fetching client:', error);
-          setError('Failed to load client details');
-        }
-      };
-      fetchClient();
+    if (!token) {
+      navigate('/login');
+      return;
     }
-  }, [id]);
+  }, [token, navigate]);
+
+  React.useEffect(() => {
+    if (!id || !token) return;
+
+    const fetchClient = async () => {
+      try {
+        const response = await fetch(`/api/clients/${id}`, {
+          headers: { 
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Failed to fetch client');
+        }
+
+        const data = await response.json();
+        
+        // Remove the notes array from the form data since we're only using it for display
+        const { notes, ...clientData } = data;
+        
+        setFormData({
+          ...clientData,
+          notes: '', // Set notes to empty string for new notes
+          initial_follow_up: {
+            date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            notes: ''
+          }
+        });
+      } catch (error) {
+        console.error('Error fetching client:', error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: error.message
+        });
+        setError('Failed to load client details');
+      }
+    };
+
+    fetchClient();
+  }, [id, token, toast]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (!token) {
+      navigate('/login');
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
     try {
-      const response = await fetch(id ? `/api/clients/${id}` : '/api/clients', {
+      // First, save the client
+      const clientResponse = await fetch(id ? `/api/clients/${id}` : '/api/clients', {
         method: id ? 'PUT' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          ...formData,
+          // Remove notes from client data
+          notes: undefined
+        })
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to save client');
+      if (!clientResponse.ok) {
+        const errorData = await clientResponse.json();
+        throw new Error(errorData.message || 'Failed to save client');
       }
+
+      const savedClient = await clientResponse.json();
+
+      // If there are notes, create a note entry
+      if (formData.notes?.trim()) {
+        const noteResponse = await fetch(`/api/clients/${savedClient.id}/notes`, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            content: formData.notes,
+            note_type: 'internal'  // or any default type you prefer
+          })
+        });
+
+        if (!noteResponse.ok) {
+          const errorData = await noteResponse.json();
+          throw new Error(errorData.message || 'Failed to save note');
+        }
+      }
+
+      toast({
+        title: "Success",
+        description: id ? "Client updated successfully" : "Client created successfully"
+      });
 
       navigate('/clients');
     } catch (error) {
       console.error('Error saving client:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || 'Failed to save client'
+      });
       setError(error.message);
     } finally {
       setLoading(false);
@@ -76,8 +158,7 @@ const ClientForm = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white p-6">
-      <div className="max-w-3xl mx-auto">
+    <PageContainer>
         <Card>
           <CardHeader>
             <CardTitle>{id ? 'Edit Client' : 'Add New Client'}</CardTitle>
@@ -262,9 +343,9 @@ const ClientForm = () => {
                 </div>
               </div>
 
-              {/* Source & Initial Follow-up */}
-              <div>
-                <h3 className="text-lg font-medium mb-4">Source & Follow-up</h3>
+             {/* Source & Notes */}
+             <div>
+                <h3 className="text-lg font-medium mb-4">Source & Notes</h3>
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium mb-1">Source</label>
@@ -279,9 +360,28 @@ const ClientForm = () => {
                       placeholder="How did they find us?"
                     />
                   </div>
-
-                  {!id && ( // Only show for new clients
+                  
+                  {/* Notes Section with adjusted spacing */}
+                  <div className="mt-6">
+                    <label className="block text-sm font-medium mb-1">Notes</label>
                     <div>
+                      <textarea
+                        value={formData.notes}
+                        onChange={(e) => setFormData(prev => ({
+                          ...prev,
+                          notes: e.target.value
+                        }))}
+                        className="w-full p-3 border rounded min-h-[120px]"
+                        placeholder="Add any additional notes about the client..."
+                      />
+                      <p className="text-sm text-gray-500 mt-1">
+                        Add any relevant information about the client that doesn't fit in the fields above.
+                      </p>
+                    </div>
+                  </div>
+
+                  {!id && (
+                    <div className="mt-6">
                       <label className="block text-sm font-medium mb-1">Schedule Initial Follow-up</label>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
@@ -337,8 +437,7 @@ const ClientForm = () => {
             </form>
           </CardContent>
         </Card>
-      </div>
-    </div>
+     </PageContainer>
   );
 };
 

@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Upload } from 'lucide-react';
+import { PageContainer } from '@/components/layout/PageContainer';
 
 const InvoiceForm = () => {
   const navigate = useNavigate();
@@ -57,8 +58,7 @@ const InvoiceForm = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white p-6">
-      <div className="max-w-3xl mx-auto">
+    <PageContainer>
         <Card>
           <CardHeader>
             <CardTitle>Add New Invoice</CardTitle>
@@ -176,8 +176,7 @@ const InvoiceForm = () => {
             </form>
           </CardContent>
         </Card>
-      </div>
-    </div>
+     </PageContainer>
   );
 };
 

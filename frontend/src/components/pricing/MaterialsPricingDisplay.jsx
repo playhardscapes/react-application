@@ -3,6 +3,7 @@
 import React from 'react';
 import { useMaterialsCosts } from '../../hooks/useMaterialsCosts';
 import { formatCurrency } from '../../utils/formatting';
+import { useAuth } from '@/contexts/AuthContext';
 
 const MaterialSection = ({ title, children }) => (
   <div className="border-t border-gray-200 py-3">
@@ -21,8 +22,8 @@ const CostRow = ({ label, quantity, unit, cost }) => (
 );
 
 const MaterialsPricingDisplay = ({ surfaceData, dimensions, pricing }) => {
-  const costs = useMaterialsCosts(surfaceData, dimensions, pricing);
-  const { details, subtotals } = costs;
+  const { token } = useAuth();
+  const costs = useMaterialsCosts(surfaceData, dimensions, pricing, token);
 
   return (
     <div className="bg-white rounded-lg shadow p-6">

@@ -4,6 +4,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { CONTRACT_STATUSES } from '@/constants/contracts';
 import { Editor } from '@tinymce/tinymce-react';
+import { PageContainer } from '@/components/layout/PageContainer';
 import { 
   Loader2, 
   Save, 
@@ -23,6 +24,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+
 
 const ContractEdit = () => {
   const { id } = useParams();
@@ -142,22 +144,19 @@ const ContractEdit = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white p-6">
-        <div className="max-w-7xl mx-auto">
+      <PageContainer>
           <Card>
             <CardContent className="p-8 text-center">
               <Loader2 className="h-8 w-8 animate-spin mx-auto" />
               <p className="mt-2">Loading contract...</p>
             </CardContent>
           </Card>
-        </div>
-      </div>
+        </PageContainer>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white p-6">
-      <div className="max-w-7xl mx-auto">
+    <PageContainer>
         <Card>
           <CardHeader>
             <div className="flex justify-between items-center">
@@ -258,7 +257,7 @@ const ContractEdit = () => {
             />
           </CardContent>
         </Card>
-      </div>
+      
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog 
@@ -283,7 +282,7 @@ const ContractEdit = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </PageContainer>
   );
 };
 

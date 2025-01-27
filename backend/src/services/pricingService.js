@@ -5,265 +5,250 @@ const {
   SERVICES_PRICING,
   EQUIPMENT_PRICING
 } = require('../constants/pricing');
+const winston = require('winston');
+
+// Create a logger
+const logger = winston.createLogger({
+  level: 'info',
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.json()
+  ),
+  transports: [
+    new winston.transports.Console(),
+    new winston.transports.File({ filename: 'pricing-service-error.log', level: 'error' }),
+    new winston.transports.File({ filename: 'pricing-service-combined.log' })
+  ]
+});
 
 const pricingService = {
   /**
    * Get all pricing configurations
+   * @param {Object} user User context for logging
    * @returns {Promise<Array>} List of pricing configurations
    */
-  async getAllPricingConfigurations() {
-    const query = `
-      SELECT *
-      FROM pricing_configurations
-      ORDER BY category, name
-    `;
-    const result = await db.query(query);
-    return result.rows;
+  async getAllPricingConfigurations(user) {
+    try {
+      logger.info('Fetching all pricing configurations', { 
+        userId: user.id, 
+        userEmail: user.email 
+      });
+
+      const query = `
+        SELECT *
+        FROM pricing_configurations
+        ORDER BY category, name
+      `;
+      const result = await db.query(query);
+      
+      logger.info(`Retrieved ${result.rows.length} pricing configurations`);
+      return result.rows;
+    } catch (error) {
+      logger.error('Error fetching pricing configurations', {
+        error: error.message,
+        userId: user.id
+      });
+      throw error;
+    }
   },
 
   /**
    * Get a specific pricing configuration by ID
    * @param {number} id Pricing configuration ID
+   * @param {Object} user User context for logging
    * @returns {Promise<Object>} Pricing configuration
    */
-  async getPricingConfigurationById(id) {
-    const query = `
-      SELECT *
-      FROM pricing_configurations
-      WHERE id = $1
-    `;
-    const result = await db.query(query, [id]);
-    return result.rows[0] || null;
+  async getPricingConfigurationById(id, user) {
+    try {
+      logger.info(`Fetching pricing configuration by ID: ${id}`, { 
+        userId: user.id 
+      });
+
+      const query = `
+        SELECT *
+        FROM pricing_configurations
+        WHERE id = $1
+      `;
+      const result = await db.query(query, [id]);
+      
+      return result.rows[0] || null;
+    } catch (error) {
+      logger.error('Error fetching pricing configuration by ID', {
+        error: error.message,
+        userId: user.id,
+        configId: id
+      });
+      throw error;
+    }
   },
 
   /**
    * Create a new pricing configuration
    * @param {Object} configData Pricing configuration details
+   * @param {Object} user User context for logging
    * @returns {Promise<Object>} Created pricing configuration
    */
-  async createPricingConfiguration(configData) {
-    const query = `
-      INSERT INTO pricing_configurations (
-        name,
-        category,
-        value,
-        unit,
-        description,
-        created_at
-      ) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
-      RETURNING *
-    `;
-    const values = [
-      configData.name,
-      configData.category,
-      configData.value,
-      configData.unit || null,
-      configData.description || null
-    ];
+  async createPricingConfiguration(configData, user) {
+    try {
+      logger.info('Creating new pricing configuration', { 
+        userId: user.id,
+        name: configData.name,
+        category: configData.category
+      });
 
-    const result = await db.query(query, values);
-    return result.rows[0];
+      const query = `
+        INSERT INTO pricing_configurations (
+          name,
+          category,
+          value,
+          unit,
+          description,
+          created_at
+        ) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
+        RETURNING *
+      `;
+      const values = [
+        configData.name,
+        configData.category,
+        configData.value,
+        configData.unit || null,
+        configData.description || null
+      ];
+
+      const result = await db.query(query, values);
+      
+      logger.info(`Created pricing configuration with ID: ${result.rows[0].id}`);
+      return result.rows[0];
+    } catch (error) {
+      logger.error('Error creating pricing configuration', {
+        error: error.message,
+        userId: user.id
+      });
+      throw error;
+    }
   },
 
   /**
-   * Migrate existing constant pricing to database
-   * @returns {Promise<Array>} Imported pricing configurations
+   * Update an existing pricing configuration
+   * @param {number} id Configuration ID
+   * @param {Object} configData Updated configuration details
+   * @param {Object} user User context for logging
+   * @returns {Promise<Object>} Updated pricing configuration
    */
-  async migrateConstantPricing() {
-    console.log('Starting pricing migration...');
-    const client = await db.pool.connect();
+  async updatePricingConfiguration(id, configData, user) {
     try {
-      await client.query('BEGIN');
+      logger.info(`Updating pricing configuration with ID: ${id}`, { 
+        userId: user.id,
+        updates: Object.keys(configData)
+      });
 
-      const results = [];
+      const query = `
+        UPDATE pricing_configurations 
+        SET name = COALESCE($1, name),
+            category = COALESCE($2, category),
+            value = COALESCE($3, value), 
+            unit = COALESCE($4, unit),
+            description = COALESCE($5, description),
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = $6
+        RETURNING *
+      `;
 
-      // Helper function to safely get value
-      const safeGetValue = (item) => {
-        if (typeof item === 'object') {
-          return item.price !== undefined ? item.price : 0;
-        }
-        return typeof item === 'number' ? item : 0;
-      };
-
-      // Migrate Materials Pricing
-      for (const [name, value] of Object.entries(MATERIALS_PRICING)) {
-        const materialConfig = {
-          name,
-          category: 'materials',
-          value: safeGetValue(value),
-          unit: 'per unit',
-          description: `Pricing for ${name} material`
-        };
-
-        const query = `
-          INSERT INTO pricing_configurations (
-            name,
-            category,
-            value,
-            unit,
-            description,
-            created_at
-          ) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
-          ON CONFLICT (name, category) DO UPDATE
-          SET value = $3, updated_at = CURRENT_TIMESTAMP
-          RETURNING *
-        `;
-
-        const result = await client.query(query, [
-          materialConfig.name,
-          materialConfig.category,
-          materialConfig.value,
-          materialConfig.unit,
-          materialConfig.description
-        ]);
-
-        results.push(result.rows[0]);
-        console.log(`Migrated material: ${name}`);
-      }
-
-      // Migrate Services Pricing
-      for (const [name, value] of Object.entries(SERVICES_PRICING)) {
-        const serviceConfig = {
-          name,
-          category: 'services',
-          value: safeGetValue(value),
-          unit: 'per unit',
-          description: `Pricing for ${name} service`
-        };
-
-        const query = `
-          INSERT INTO pricing_configurations (
-            name,
-            category,
-            value,
-            unit,
-            description,
-            created_at
-          ) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
-          ON CONFLICT (name, category) DO UPDATE
-          SET value = $3, updated_at = CURRENT_TIMESTAMP
-          RETURNING *
-        `;
-
-        const result = await client.query(query, [
-          serviceConfig.name,
-          serviceConfig.category,
-          serviceConfig.value,
-          serviceConfig.unit,
-          serviceConfig.description
-        ]);
-
-        results.push(result.rows[0]);
-        console.log(`Migrated service: ${name}`);
-      }
-
-      // Migrate Equipment Pricing
-      const processEquipmentPricing = (items, baseCategory) => {
-        const configs = [];
-
-        const processItem = (name, details, parentCategory = baseCategory) => {
-          // If details is a primitive number, use it directly
-          if (typeof details === 'number') {
-            return [{
-              name,
-              category: parentCategory,
-              value: details,
-              unit: 'per unit',
-              description: `Pricing for ${name}`
-            }];
-          }
-
-          // If details is an object
-          if (typeof details === 'object') {
-            // If it has a direct price, create a config
-            if (details.price !== undefined) {
-              return [{
-                name,
-                category: parentCategory,
-                value: details.price,
-                unit: 'per item',
-                description: details.installationTime
-                  ? `Installation time: ${details.installationTime} hours`
-                  : `Pricing for ${name}`
-              }];
-            }
-
-            // If it's a nested object, recursively process
-            return Object.entries(details).flatMap(([subName, subDetails]) =>
-              processItem(`${name} - ${subName}`, subDetails, parentCategory)
-            );
-          }
-
-          // If we can't process the item, return an empty array
-          return [];
-        };
-
-        // Flatten the processing of different equipment categories
-        Object.entries(items).forEach(([name, details]) => {
-          configs.push(...processItem(name, details));
-        });
-
-        return configs;
-      };
-
-      // Process different equipment categories
-      const equipmentCategories = [
-        { name: 'posts', category: 'equipment/posts' },
-        { name: 'basketball.systems', category: 'equipment/basketball/systems' },
-        { name: 'windscreen', category: 'equipment/windscreen' },
-        { name: 'basketball.extensions', category: 'equipment/basketball/extensions' },
-        { name: 'installation', category: 'equipment/installation' }
+      const values = [
+        configData.name,
+        configData.category,
+        configData.value,
+        configData.unit,
+        configData.description,
+        id
       ];
 
-      for (const { name, category } of equipmentCategories) {
-        // Navigate to the nested object
-        const categoryItems = name.split('.').reduce((acc, part) => acc[part], EQUIPMENT_PRICING);
-
-        const equipmentConfigs = processEquipmentPricing(categoryItems, category);
-
-        // Insert equipment configurations
-        for (const config of equipmentConfigs) {
-          const query = `
-            INSERT INTO pricing_configurations (
-              name,
-              category,
-              value,
-              unit,
-              description,
-              created_at
-            ) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
-            ON CONFLICT (name, category) DO UPDATE
-            SET value = $3, updated_at = CURRENT_TIMESTAMP
-            RETURNING *
-          `;
-
-          try {
-            const result = await client.query(query, [
-              config.name,
-              config.category,
-              config.value,
-              config.unit,
-              config.description
-            ]);
-
-            results.push(result.rows[0]);
-            console.log(`Migrated equipment: ${config.name}`);
-          } catch (insertError) {
-            console.error(`Error inserting equipment item: ${config.name}`, insertError);
-          }
-        }
+      const result = await db.query(query, values);
+      
+      if (result.rows.length === 0) {
+        logger.warn(`No pricing configuration found with ID: ${id}`);
+        throw new Error('Pricing configuration not found');
       }
 
-      await client.query('COMMIT');
-
-      console.log(`Migration completed. Imported ${results.length} pricing configurations.`);
-      return results;
+      logger.info(`Successfully updated pricing configuration with ID: ${id}`);
+      return result.rows[0];
     } catch (error) {
-      await client.query('ROLLBACK');
-      console.error('Migration failed:', error);
+      logger.error('Error updating pricing configuration', {
+        error: error.message,
+        userId: user.id,
+        configId: id
+      });
       throw error;
-    } finally {
-      client.release();
+    }
+  },
+
+  /**
+   * Delete a pricing configuration
+   * @param {number} id Configuration ID
+   * @param {Object} user User context for logging
+   * @returns {Promise<Object>} Deleted pricing configuration
+   */
+  async deletePricingConfiguration(id, user) {
+    try {
+      logger.info(`Deleting pricing configuration with ID: ${id}`, { 
+        userId: user.id 
+      });
+
+      const query = `
+        DELETE FROM pricing_configurations
+        WHERE id = $1
+        RETURNING *
+      `;
+
+      const result = await db.query(query, [id]);
+      
+      if (result.rows.length === 0) {
+        logger.warn(`No pricing configuration found with ID: ${id}`);
+        throw new Error('Pricing configuration not found');
+      }
+
+      logger.info(`Successfully deleted pricing configuration with ID: ${id}`);
+      return result.rows[0];
+    } catch (error) {
+      logger.error('Error deleting pricing configuration', {
+        error: error.message,
+        userId: user.id,
+        configId: id
+      });
+      throw error;
+    }
+  },
+
+  /**
+   * Get pricing configurations by category
+   * @param {string} category Category to filter
+   * @param {Object} user User context for logging
+   * @returns {Promise<Array>} Pricing configurations in the category
+   */
+  async getPricingByCategory(category, user) {
+    try {
+      logger.info(`Fetching pricing configurations for category: ${category}`, { 
+        userId: user.id 
+      });
+
+      const query = `
+        SELECT *
+        FROM pricing_configurations
+        WHERE category LIKE $1
+        ORDER BY name
+      `;
+
+      const result = await db.query(query, [`${category}%`]);
+      
+      logger.info(`Found ${result.rows.length} pricing configurations for category ${category}`);
+      return result.rows;
+    } catch (error) {
+      logger.error('Error fetching category pricing configurations', {
+        error: error.message,
+        userId: user.id,
+        category
+      });
+      throw error;
     }
   }
 };

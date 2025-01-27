@@ -112,8 +112,7 @@ const CreateFromEstimate = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <PageContainer>
         <Card>
           <CardHeader>
             <CardTitle>Create Proposal from Estimate</CardTitle>

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { PageContainer } from '@/components/layout/PageContainer';
 import { 
   Loader2, 
   Calendar, 
@@ -126,37 +127,32 @@ const ProjectsList = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white p-6">
-        <div className="max-w-7xl mx-auto">
+      <PageContainer>
           <Card>
             <CardContent className="p-8 text-center">
               <Loader2 className="h-8 w-8 animate-spin mx-auto" />
               <p className="mt-2">Loading projects...</p>
             </CardContent>
           </Card>
-        </div>
-      </div>
-    );
+        </PageContainer>
+          );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white p-6">
-        <div className="max-w-7xl mx-auto">
+      <PageContainer>
           <Card>
             <CardContent className="p-8 text-center text-red-500">
               <AlertCircle className="h-8 w-8 mx-auto" />
               <p className="mt-2">{error}</p>
             </CardContent>
           </Card>
-        </div>
-      </div>
+        </PageContainer>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <PageContainer>
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold">Projects</h1>
@@ -281,8 +277,7 @@ const ProjectsList = () => {
             </div>
           </CardContent>
         </Card>
-      </div>
-    </div>
+     </PageContainer>
   );
 };
 

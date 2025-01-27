@@ -2,9 +2,14 @@
 const API_BASE_URL = '/api';
 
 const clientService = {
-  async fetchClients() {
+  async fetchClients(token) {
     try {
-      const response = await fetch(`${API_BASE_URL}/clients`);
+      const response = await fetch(`${API_BASE_URL}/clients`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        }
+      });
       if (!response.ok) {
         throw new Error(response.statusText || 'Failed to fetch clients');
       }
@@ -16,9 +21,14 @@ const clientService = {
     }
   },
 
-  async getClientById(id) {
+  async getClientById(id, token) {
     try {
-      const response = await fetch(`${API_BASE_URL}/clients/${id}`);
+      const response = await fetch(`${API_BASE_URL}/clients/${id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        }
+      });
       if (!response.ok) {
         throw new Error('Failed to fetch client');
       }
@@ -29,11 +39,12 @@ const clientService = {
     }
   },
 
-  async createClient(clientData) {
+  async createClient(clientData, token) {
     try {
       const response = await fetch(`${API_BASE_URL}/clients`, {
         method: 'POST',
         headers: {
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(clientData),
@@ -51,11 +62,12 @@ const clientService = {
     }
   },
 
-  async updateClient(id, clientData) {
+  async updateClient(id, clientData, token) {
     try {
       const response = await fetch(`${API_BASE_URL}/clients/${id}`, {
         method: 'PUT',
         headers: {
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(clientData),

@@ -7,17 +7,23 @@ const { body, validationResult } = require('express-validator');
 // Validation middleware
 const validate = (validations) => {
   return async (req, res, next) => {
-    for (let validation of validations) {
-      const result = await validation.run(req);
-      if (result.errors.length) break;
-    }
+    try {
+      for (let validation of validations) {
+        const result = await validation.run(req);
+        if (result.errors.length) break;
+      }
 
-    const errors = validationResult(req);
-    if (errors.isEmpty()) {
-      return next();
-    }
+      const errors = validationResult(req);
+      if (errors.isEmpty()) {
+        return next();
+      }
 
-    res.status(400).json({ errors: errors.array() });
+      console.log('Validation failed:', errors.array());  // Add this log
+      res.status(400).json({ errors: errors.array() });
+    } catch (error) {
+      console.error('Validation error:', error);
+      res.status(500).json({ error: 'Validation failed' });
+    }
   };
 };
 
@@ -45,6 +51,7 @@ router.get('/:id', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch project' });
   }
 });
+
 
 // Create new project
 router.post('/', validate([
@@ -74,7 +81,12 @@ router.post('/', validate([
   body('completion_date')
     .optional()
     .isISO8601()
-    .withMessage('Invalid completion date')
+    .withMessage('Invalid completion date'),
+  // Add this new validation:
+  body('assigned_team_lead')
+    .optional()
+    .isInt()
+    .withMessage('Invalid team lead ID')
 ]), async (req, res) => {
   try {
     const project = await projectService.createProject(req.body);
@@ -87,6 +99,20 @@ router.post('/', validate([
 
 // Update project
 router.put('/:id', validate([
+  // Add validation for all possible fields
+  body('title')
+    .optional()
+    .trim()
+    .notEmpty()
+    .withMessage('Title cannot be empty'),
+  body('client_id')
+    .optional()
+    .isInt()
+    .withMessage('Valid client ID is required'),
+  body('contract_id')
+    .optional()
+    .isInt()
+    .withMessage('Invalid contract ID'),
   body('status')
     .optional()
     .isIn(['pending', 'in_progress', 'completed', 'on_hold', 'cancelled'])
@@ -107,16 +133,46 @@ router.put('/:id', validate([
     .optional()
     .isFloat({ min: 0 })
     .withMessage('Actual hours must be positive'),
+  body('assigned_team_lead')
+    .optional()
+    .isInt()
+    .withMessage('Invalid team lead ID'),
+  body('start_date')
+    .optional()
+    .isISO8601()
+    .withMessage('Invalid start date'),
+  body('completion_date')
+    .optional()
+    .isISO8601()
+    .withMessage('Invalid completion date'),
+  body('location')
+    .optional()
+    .trim()
+    .notEmpty()
+    .withMessage('Location cannot be empty'),
+  body('notes')
+    .optional()
+    .trim()
 ]), async (req, res) => {
   try {
+    // Log validation results
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      console.log('Validation errors:', errors.array());
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    console.log('Updating project with data:', req.body);
     const project = await projectService.updateProject(req.params.id, req.body);
     if (!project) {
+      console.log('No project returned from update');
       return res.status(404).json({ error: 'Project not found' });
     }
+    console.log('Project updated successfully:', project);
     res.json(project);
   } catch (error) {
     console.error('Error updating project:', error);
-    res.status(500).json({ error: 'Failed to update project' });
+    res.status(400).json({ error: error.message || 'Failed to update project' });
   }
 });
 

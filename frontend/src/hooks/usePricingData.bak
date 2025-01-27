@@ -1,0 +1,48 @@
+// src/hooks/usePricingData.js
+import { useState, useEffect } from 'react';
+
+export const usePricingData = () => {
+  const [pricingData, setPricingData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const loadPricing = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/api/load-pricing');
+        if (!response.ok) throw new Error('Failed to load pricing data');
+        const data = await response.json();
+        setPricingData(data);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadPricing();
+  }, []);
+
+  const savePricing = async (data) => {
+    try {
+      const response = await fetch('http://localhost:5000/api/save-pricing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      if (!response.ok) throw new Error('Failed to save pricing data');
+      setPricingData(data);
+      return true;
+    } catch (err) {
+      setError(err.message);
+      return false;
+    }
+  };
+
+  return {
+    pricingData,
+    isLoading,
+    error,
+    savePricing
+  };
+};

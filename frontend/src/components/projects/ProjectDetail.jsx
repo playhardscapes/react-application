@@ -1,8 +1,10 @@
+// src/components/projects/ProjectDetail.jsx
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import TaskList from './TaskList';
+import { PageContainer } from '@/components/layout/PageContainer';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -65,8 +67,16 @@ const ProjectDetail = () => {
         const response = await fetch(`/api/projects/${id}`);
         if (!response.ok) throw new Error('Failed to fetch project');
         const data = await response.json();
-        setProject(data);
-        setOriginalProject(data); // Keep original for comparison
+        
+        // Format dates before setting state
+        const formattedData = {
+          ...data,
+          start_date: data.start_date ? data.start_date.split('T')[0] : '',
+          completion_date: data.completion_date ? data.completion_date.split('T')[0] : ''
+        };
+        
+        setProject(formattedData);
+        setOriginalProject(formattedData); // Keep original for comparison
       } catch (error) {
         console.error('Error fetching project:', error);
         setError(error.message);
@@ -77,6 +87,24 @@ const ProjectDetail = () => {
 
     fetchProject();
   }, [id]);
+
+  const [teamLeads, setTeamLeads] = useState([]);
+
+// Add this useEffect to fetch team leads
+useEffect(() => {
+  const fetchTeamLeads = async () => {
+    try {
+      const response = await fetch('/api/users/team-leads');
+      if (!response.ok) throw new Error('Failed to fetch team leads');
+      const data = await response.json();
+      setTeamLeads(data);
+    } catch (error) {
+      console.error('Error fetching team leads:', error);
+    }
+  };
+
+  fetchTeamLeads();
+}, []);
 
   // Handle unsaved changes warning
   useEffect(() => {
@@ -94,19 +122,46 @@ const ProjectDetail = () => {
   const handleSave = async () => {
     setSaving(true);
     try {
+      // Keep essential fields and format dates
+      const updateData = {
+        title: project.title,
+        status: project.status,
+        priority: project.priority,
+        complexity: project.complexity,
+        location: project.location,
+        notes: project.notes,
+        start_date: project.start_date || null,
+        completion_date: project.completion_date || null,
+        estimated_hours: project.estimated_hours ? Number(project.estimated_hours) : null,
+        actual_hours: project.actual_hours ? Number(project.actual_hours) : null,
+        client_id: project.client_id,  // Preserve the client_id
+        contract_id: project.contract_id, // Preserve the contract_id
+        assigned_team_lead: project.assigned_team_lead
+      };
+  
       const response = await fetch(`/api/projects/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(project)
+        body: JSON.stringify(updateData)
       });
-
-      if (!response.ok) throw new Error('Failed to save project');
+  
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to save project');
+      }
       
       const updatedProject = await response.json();
-      setProject(updatedProject);
-      setOriginalProject(updatedProject);
+      // Format dates in the response
+      const formattedProject = {
+        ...updatedProject,
+        start_date: updatedProject.start_date ? updatedProject.start_date.split('T')[0] : '',
+        completion_date: updatedProject.completion_date ? updatedProject.completion_date.split('T')[0] : ''
+      };
+      
+      setProject(formattedProject);
+      setOriginalProject(formattedProject);
       setEditMode(false);
       setHasUnsavedChanges(false);
       setError(null);
@@ -150,8 +205,15 @@ const ProjectDetail = () => {
       if (!response.ok) throw new Error('Failed to update status');
       
       const updatedProject = await response.json();
-      setProject(updatedProject);
-      setOriginalProject(updatedProject);
+      // Format dates in the response
+      const formattedProject = {
+        ...updatedProject,
+        start_date: updatedProject.start_date ? updatedProject.start_date.split('T')[0] : '',
+        completion_date: updatedProject.completion_date ? updatedProject.completion_date.split('T')[0] : ''
+      };
+      
+      setProject(formattedProject);
+      setOriginalProject(formattedProject);
       setHasUnsavedChanges(false);
     } catch (error) {
       // Revert on error
@@ -161,15 +223,17 @@ const ProjectDetail = () => {
   };
 
   const handleChange = (field, value) => {
-    // Add validation
-    if (field === 'estimated_hours' || field === 'actual_hours') {
-      value = Math.max(0, Number(value));
-    }
+    setProject(prev => {
+      // Handle number fields
+      if (field === 'estimated_hours' || field === 'actual_hours') {
+        value = value ? Math.max(0, Number(value)) : '';
+      }
 
-    setProject(prev => ({
-      ...prev,
-      [field]: value
-    }));
+      return {
+        ...prev,
+        [field]: value
+      };
+    });
     setHasUnsavedChanges(true);
   };
 
@@ -215,8 +279,7 @@ const ProjectDetail = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <PageContainer>
         <Card>
           <CardHeader>
             <div className="flex justify-between items-start">
@@ -317,215 +380,229 @@ const ProjectDetail = () => {
           </CardHeader>
 
           {error && (
-            <div className="mx-6 mb-4 p-4 bg-red-50 border border-red-200 rounded-md flex items-center gap-2 text-red-600">
-              <AlertCircle className="h-4 w-4" />
-              {error}
-            </div>
-          )}
+          <div className="mx-6 mb-4 p-4 bg-red-50 border border-red-200 rounded-md flex items-center gap-2 text-red-600">
+            <AlertCircle className="h-4 w-4" />
+            {error}
+          </div>
+        )}
 
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Project Details */}
-              <div>
-                <h3 className="font-medium mb-4">Project Details</h3>
-                
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Status</label>
-                    <select
-                      value={project.status}
-                      onChange={(e) => handleStatusChange(e.target.value)}
-                      disabled={!editMode}
-                      className="w-full p-2 border rounded"
-                    >
-                      {PROJECT_STATUSES.map(status => (
-                        <option key={status.value} value={status.value}>
-                          {status.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Priority</label>
-                    <select
-                      value={project.priority || 'medium'}
-                      onChange={(e) => handleChange('priority', e.target.value)}
-                      disabled={!editMode}
-                      className="w-full p-2 border rounded"
-                    >
-                      {PRIORITY_LEVELS.map(priority => (
-                        <option key={priority.value} value={priority.value}>
-                          {priority.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Complexity</label>
-                    <select
-                      value={project.complexity || 'medium'}
-                      onChange={(e) => handleChange('complexity', e.target.value)}
-                      disabled={!editMode}
-                      className="w-full p-2 border rounded"
-                    >
-                      {COMPLEXITY_LEVELS.map(complexity => (
-                        <option key={complexity.value} value={complexity.value}>
-                          {complexity.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Location</label>
-                    <input
-                      type="text"
-                      value={project.location || ''}
-                      onChange={(e) => handleChange('location', e.target.value)}
-                      disabled={!editMode}
-                      className="w-full p-2 border rounded"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Notes</label>
-                    <textarea
-                      value={project.notes || ''}
-                      onChange={(e) => handleChange('notes', e.target.value)}
-                      disabled={!editMode}
-                      className="w-full p-2 border rounded h-24"
-                    />
-                  </div>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Project Details Column */}
+            <div>
+              <h3 className="font-medium mb-4">Project Details</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Status</label>
+                  <select
+                    value={project.status}
+                    onChange={(e) => handleStatusChange(e.target.value)}
+                    disabled={!editMode}
+                    className="w-full p-2 border rounded"
+                  >
+                    {PROJECT_STATUSES.map(status => (
+                      <option key={status.value} value={status.value}>
+                        {status.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">Priority</label>
+                  <select
+                    value={project.priority || 'medium'}
+                    onChange={(e) => handleChange('priority', e.target.value)}
+                    disabled={!editMode}
+                    className="w-full p-2 border rounded"
+                  >
+                    {PRIORITY_LEVELS.map(priority => (
+                      <option key={priority.value} value={priority.value}>
+                        {priority.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">Complexity</label>
+                  <select
+                    value={project.complexity || 'medium'}
+                    onChange={(e) => handleChange('complexity', e.target.value)}
+                    disabled={!editMode}
+                    className="w-full p-2 border rounded"
+                  >
+                    {COMPLEXITY_LEVELS.map(complexity => (
+                      <option key={complexity.value} value={complexity.value}>
+                        {complexity.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">Location</label>
+                  <input
+                    type="text"
+                    value={project.location || ''}
+                    onChange={(e) => handleChange('location', e.target.value)}
+                    disabled={!editMode}
+                    className="w-full p-2 border rounded"
+                  />
+                </div>
+
+                <div>
+                <label className="block text-sm font-medium mb-1">Team Lead</label>
+                <select
+                value={project.assigned_team_lead || ''}
+                onChange={(e) => handleChange('assigned_team_lead', e.target.value ? Number(e.target.value) : null)}
+                disabled={!editMode}
+                className="w-full p-2 border rounded">
+               <option value="">Select Team Lead...</option>
+               {teamLeads.map(lead => (
+               <option key={lead.id} value={lead.id}>
+               {lead.name}
+               </option>
+               ))}
+              </select>
               </div>
 
-              {/* Dates and Hours */}
-              <div>
-                <h3 className="font-medium mb-4">Schedule & Hours</h3>
 
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Start Date</label>
-                    <input
-                      type="date"
-                      value={project.start_date || ''}
-                      onChange={(e) => handleChange('start_date', e.target.value)}
-                      disabled={!editMode}
-                      className="w-full p-2 border rounded"
-                    />
-                  </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Notes</label>
+                  <textarea
+                    value={project.notes || ''}
+                    onChange={(e) => handleChange('notes', e.target.value)}
+                    disabled={!editMode}
+                    className="w-full p-2 border rounded h-24"
+                  />
+                </div>
+              </div>
+            </div>
 
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Completion Date</label>
-                    <input
-                      type="date"
-                      value={project.completion_date || ''}
-                      onChange={(e) => handleChange('completion_date', e.target.value)}
-                      disabled={!editMode}
-                      className="w-full p-2 border rounded"
-                    />
-                  </div>
+            {/* Schedule & Hours Column */}
+            <div>
+              <h3 className="font-medium mb-4">Schedule & Hours</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Start Date</label>
+                  <input
+                    type="date"
+                    value={project.start_date || ''}
+                    onChange={(e) => handleChange('start_date', e.target.value)}
+                    disabled={!editMode}
+                    className="w-full p-2 border rounded"
+                  />
+                </div>
 
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Estimated Hours</label>
-                    <input
-                      type="number"
-                      value={project.estimated_hours || ''}
-                      onChange={(e) => handleChange('estimated_hours', e.target.value)}
-                      disabled={!editMode}
-                      min="0"
-                      step="0.5"
-                      className="w-full p-2 border rounded"
-                    />
-                    </div>
-  
+                <div>
+                  <label className="block text-sm font-medium mb-1">Completion Date</label>
+                  <input
+                    type="date"
+                    value={project.completion_date || ''}
+                    onChange={(e) => handleChange('completion_date', e.target.value)}
+                    disabled={!editMode}
+                    className="w-full p-2 border rounded"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">Estimated Hours</label>
+                  <input
+                    type="number"
+                    value={project.estimated_hours || ''}
+                    onChange={(e) => handleChange('estimated_hours', e.target.value)}
+                    disabled={!editMode}
+                    min="0"
+                    step="0.5"
+                    className="w-full p-2 border rounded"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">Actual Hours</label>
+                  <input
+                    type="number"
+                    value={project.actual_hours || ''}
+                    onChange={(e) => handleChange('actual_hours', e.target.value)}
+                    disabled={!editMode}
+                    min="0"
+                    step="0.5"
+                    className="w-full p-2 border rounded"
+                  />
+                </div>
+
+                {/* Progress Stats */}
+                <div className="mt-6 bg-gray-50 p-4 rounded-lg">
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium mb-1">Actual Hours</label>
-                      <input
-                        type="number"
-                        value={project.actual_hours || ''}
-                        onChange={(e) => handleChange('actual_hours', e.target.value)}
-                        disabled={!editMode}
-                        min="0"
-                        step="0.5"
-                        className="w-full p-2 border rounded"
-                      />
+                      <p className="text-sm text-gray-600">Tasks Completed</p>
+                      <p className="text-xl font-medium">
+                        {project.tasks_completed || 0}/{project.total_tasks || 0}
+                      </p>
                     </div>
-                  </div>
-  
-                  {/* Progress Stats */}
-                  <div className="mt-6 bg-gray-50 p-4 rounded-lg">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-sm text-gray-600">Tasks Completed</p>
-                        <p className="text-xl font-medium">
-                          {project.tasks_completed || 0}/{project.total_tasks || 0}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Hours Progress</p>
-                        <p className="text-xl font-medium">
-                          {project.actual_hours || 0}/{project.estimated_hours || 0}
-                        </p>
-                      </div>
-                    </div>
-  
-                    {/* Hours Progress Bar */}
-                    <div className="mt-4 space-y-1">
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div 
-                          className="bg-green-600 rounded-full h-2 transition-all duration-300"
-                          style={{ 
-                            width: `${Math.min(
-                              ((project.actual_hours || 0) / (project.estimated_hours || 1)) * 100,
-                              100
-                            )}%` 
-                          }}
-                        />
-                      </div>
-                      <p className="text-xs text-gray-500 text-right">
-                        {Math.round(((project.actual_hours || 0) / (project.estimated_hours || 1)) * 100)}% of estimated hours used
+                    <div>
+                      <p className="text-sm text-gray-600">Hours Progress</p>
+                      <p className="text-xl font-medium">
+                        {project.actual_hours || 0}/{project.estimated_hours || 0}
                       </p>
                     </div>
                   </div>
-  
-                  {/* Contract Information */}
-                  {project.contract_amount && (
-                    <div className="mt-6 bg-blue-50 p-4 rounded-lg">
-                      <h4 className="font-medium text-blue-900 mb-2">Contract Details</h4>
-                      <div className="space-y-2">
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm text-blue-700">Contract Amount:</span>
-                          <span className="font-medium text-blue-900">
-                            ${Number(project.contract_amount).toLocaleString()}
-                          </span>
-                        </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="w-full"
-                          onClick={() => navigate(`/contracts/${project.contract_id}`)}
-                        >
-                          View Contract
-                        </Button>
-                      </div>
+
+                  {/* Hours Progress Bar */}
+                  <div className="mt-4 space-y-1">
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div 
+                        className="bg-green-600 rounded-full h-2 transition-all duration-300"
+                        style={{ 
+                          width: `${Math.min(
+                            ((project.actual_hours || 0) / (project.estimated_hours || 1)) * 100,
+                            100
+                          )}%` 
+                        }}
+                      />
                     </div>
-                  )}
+                    <p className="text-xs text-gray-500 text-right">
+                      {Math.round(((project.actual_hours || 0) / (project.estimated_hours || 1)) * 100)}% of estimated hours used
+                    </p>
+                  </div>
                 </div>
+
+                {/* Contract Information */}
+                {project.contract_amount && (
+                  <div className="mt-6 bg-blue-50 p-4 rounded-lg">
+                    <h4 className="font-medium text-blue-900 mb-2">Contract Details</h4>
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-blue-700">Contract Amount:</span>
+                        <span className="font-medium text-blue-900">
+                          ${Number(project.contract_amount).toLocaleString()}
+                        </span>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                        onClick={() => navigate(`/contracts/${project.contract_id}`)}
+                      >
+                        View Contract
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
-            </CardContent>
-          </Card>
-  
-          {/* Tasks Section */}
-          <Card>
-            <CardContent className="p-6">
-              <TaskList projectId={id} />
-            </CardContent>
-          </Card>
-        </div>
-  
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+        {/* Tasks Section */}
+        <Card>
+          <CardContent className="p-6">
+            <TaskList projectId={id} />
+          </CardContent>
+        </Card>
+
         {/* Delete Confirmation Dialog */}
         <AlertDialog 
           open={showDeleteDialog} 
@@ -550,7 +627,7 @@ const ProjectDetail = () => {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-  
+
         {/* Unsaved Changes Dialog */}
         {hasUnsavedChanges && !editMode && (
           <AlertDialog open={true}>
@@ -580,8 +657,8 @@ const ProjectDetail = () => {
             </AlertDialogContent>
           </AlertDialog>
         )}
-      </div>
-    );
-  };
-  
-  export default ProjectDetail;
+      </PageContainer>
+  );
+};
+
+export default ProjectDetail;

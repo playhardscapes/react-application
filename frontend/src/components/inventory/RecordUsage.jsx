@@ -87,8 +87,7 @@ const RecordUsage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white p-6">
-      <div className="max-w-3xl mx-auto">
+    <PageContainer>
         <Card>
           <CardHeader>
             <CardTitle>Record Material Usage</CardTitle>

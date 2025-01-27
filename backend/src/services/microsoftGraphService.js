@@ -77,7 +77,7 @@ class MicrosoftGraphEmailService {
         email.body.content,
         email.body.content,
         new Date(email.receivedDateTime),
-        'unread'
+        email.sender?.emailAddress?.address === 'patrick@playhardscapes.com' ? 'sent' : 'unread'
       ];
 
       await db.query(query, values);
@@ -86,6 +86,35 @@ class MicrosoftGraphEmailService {
     }
   }
 
+  // Add to microsoftGraphService.js
+async sendEmail(to, subject, body) {
+  try {
+    const message = {
+      message: {
+        subject,
+        body: {
+          contentType: 'HTML',
+          content: body
+        },
+        toRecipients: [{
+          emailAddress: {
+            address: to
+          }
+        }]
+      }
+    };
+
+    await this.client
+      .api('/users/patrick@playhardscapes.com/sendMail')
+      .post(message);
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error sending email:', error);
+    throw error;
+  }
+}
+  
   // Background job to periodically fetch emails
   startEmailPolling(intervalMinutes = 5) {
     console.log('Polling interval started: Fetching emails every', intervalMinutes, 'minutes');

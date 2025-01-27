@@ -162,6 +162,182 @@ const inventoryService = {
   },
 
   /**
+   * Transfer stock between locations
+   * @param {Object} transferData Transfer details
+   * @returns {Promise<Object>} Transfer record
+   */
+  async transferStock(transferData) {
+    const client = await db.pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      // Validate transfer
+      const stockQuery = `
+        SELECT quantity 
+        FROM material_stock 
+        WHERE material_id = $1 AND location_id = $2
+      `;
+      const stockResult = await client.query(stockQuery, [
+        transferData.materialId, 
+        transferData.fromLocationId
+      ]);
+      const currentStock = stockResult.rows[0]?.quantity || 0;
+
+      if (currentStock < transferData.quantity) {
+        throw new Error('Insufficient stock for transfer');
+      }
+
+      // Record stock transfer
+      const transferQuery = `
+        INSERT INTO stock_transfers (
+          material_id,
+          from_location_id,
+          to_location_id,
+          quantity,
+          transferred_by,
+          notes
+        ) VALUES ($1, $2, $3, $4, $5, $6)
+        RETURNING id
+      `;
+      const transferResult = await client.query(transferQuery, [
+        transferData.materialId,
+        transferData.fromLocationId,
+        transferData.toLocationId,
+        transferData.quantity,
+        transferData.userId,
+        transferData.notes
+      ]);
+
+      // Reduce stock from source location
+      const reduceStockQuery = `
+        UPDATE material_stock
+        SET 
+          quantity = quantity - $3,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE material_id = $1 AND location_id = $2
+      `;
+      await client.query(reduceStockQuery, [
+        transferData.materialId,
+        transferData.fromLocationId,
+        transferData.quantity
+      ]);
+
+      // Add stock to destination location
+      const addStockQuery = `
+        INSERT INTO material_stock (material_id, location_id, quantity)
+        VALUES ($1, $2, $3)
+        ON CONFLICT (material_id, location_id)
+        DO UPDATE SET 
+          quantity = material_stock.quantity + $3,
+          updated_at = CURRENT_TIMESTAMP
+      `;
+      await client.query(addStockQuery, [
+        transferData.materialId,
+        transferData.toLocationId,
+        transferData.quantity
+      ]);
+
+      await client.query('COMMIT');
+      return transferResult.rows[0];
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  },
+
+  /**
+   * Add or update container tracking
+   * @param {Object} containerData Container details
+   * @returns {Promise<Object>} Container record
+   */
+  async addContainer(containerData) {
+    const query = `
+      INSERT INTO material_stock (
+        material_id,
+        location_id,
+        quantity,
+        container_type,
+        container_identifier,
+        received_date,
+        expiration_date,
+        batch_number
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      ON CONFLICT (material_id, container_identifier)
+      DO UPDATE SET
+        location_id = EXCLUDED.location_id,
+        quantity = EXCLUDED.quantity,
+        updated_at = CURRENT_TIMESTAMP
+      RETURNING *
+    `;
+
+    const values = [
+      containerData.materialId,
+      containerData.locationId,
+      containerData.quantity,
+      containerData.containerType,
+      containerData.containerIdentifier,
+      containerData.receivedDate || new Date(),
+      containerData.expirationDate,
+      containerData.batchNumber
+    ];
+
+    const result = await db.query(query, values);
+    return result.rows[0];
+  },
+
+  /**
+   * Get container tracking details
+   * @param {Object} filters Filtering options
+   * @returns {Promise<Array>} Container details
+   */
+  async getContainers(filters = {}) {
+    let query = `
+      SELECT 
+        ms.*,
+        m.name as material_name,
+        ml.name as location_name,
+        m.unit
+      FROM material_stock ms
+      JOIN materials m ON ms.material_id = m.id
+      JOIN material_locations ml ON ms.location_id = ml.id
+      WHERE container_identifier IS NOT NULL
+    `;
+
+    const values = [];
+    let paramCount = 1;
+
+    if (filters.materialId) {
+      query += ` AND ms.material_id = $${paramCount}`;
+      values.push(filters.materialId);
+      paramCount++;
+    }
+
+    if (filters.locationId) {
+      query += ` AND ms.location_id = $${paramCount}`;
+      values.push(filters.locationId);
+      paramCount++;
+    }
+
+    if (filters.containerType) {
+      query += ` AND ms.container_type = $${paramCount}`;
+      values.push(filters.containerType);
+      paramCount++;
+    }
+
+    query += ' ORDER BY ms.received_date DESC';
+
+    if (filters.limit) {
+      query += ` LIMIT $${paramCount}`;
+      values.push(filters.limit);
+    }
+
+    const result = await db.query(query, values);
+    return result.rows;
+  },
+
+  /**
    * Get material usage history
    * @param {number} materialId Material ID
    * @param {Object} filters Optional filters

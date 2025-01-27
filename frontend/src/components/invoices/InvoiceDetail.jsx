@@ -4,6 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DocumentList } from '../documents';
+import { PageContainer } from '@/components/layout/PageContainer';
 import { 
   FileText, 
   DollarSign, 
@@ -85,22 +86,19 @@ const InvoiceDetail = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white p-6">
-        <div className="max-w-7xl mx-auto">
+     <PageContainer>
           <Card>
             <CardContent className="p-8 text-center">
               Loading invoice details...
             </CardContent>
           </Card>
-        </div>
-      </div>
+        </PageContainer>
     );
   }
 
   if (error || !invoice) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white p-6">
-        <div className="max-w-7xl mx-auto">
+      <PageContainer>
           <Card>
             <CardContent className="p-8 text-center">
               <p className="text-red-500">{error || 'Invoice not found'}</p>
@@ -112,16 +110,14 @@ const InvoiceDetail = () => {
               </Button>
             </CardContent>
           </Card>
-        </div>
-      </div>
+       </PageContainer>
     );
   }
 
   const isOverdue = new Date(invoice.due_date) < new Date() && invoice.status === 'pending';
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <PageContainer>
         {/* Header */}
         <div className="flex justify-between items-start">
           <div>
@@ -257,8 +253,7 @@ const InvoiceDetail = () => {
             />
           </CardContent>
         </Card>
-      </div>
-    </div>
+     </PageContainer>
   );
 };
 

@@ -1,5 +1,6 @@
 // src/components/pricing/PricingList.jsx
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   Table,
   TableBody,
@@ -35,6 +36,7 @@ import {
 } from '@/services/pricingService';
 
 const PricingList = () => {
+  const { token } = useAuth();
   const [pricings, setPricings] = useState([]);
   const [filteredPricings, setFilteredPricings] = useState([]);
   const [selectedPricing, setSelectedPricing] = useState(null);
@@ -50,7 +52,7 @@ const PricingList = () => {
     const fetchPricings = async () => {
       try {
         setLoading(true);
-        const data = await getPricingConfigurations();
+        const data = await getPricingConfigurations(token);
         setPricings(data);
 
         // Extract unique categories
@@ -90,7 +92,7 @@ const PricingList = () => {
   // Delete pricing configuration
   const handleDelete = async (id) => {
     try {
-      await deletePricingConfiguration(id);
+      await deletePricingConfiguration(id, token);
       setPricings(pricings.filter(p => p.id !== id));
       // Optionally show a success toast
     } catch (err) {
@@ -114,7 +116,7 @@ const PricingList = () => {
   // Refresh pricing list after modal action
   const handleRefresh = async () => {
     try {
-      const data = await getPricingConfigurations();
+      const data = await getPricingConfigurations(token);
       setPricings(data);
 
       // Update categories

@@ -1,5 +1,6 @@
 // src/services/estimateService.js
 const API_BASE_URL = 'http://localhost:5000/api';
+const { auth: authenticateToken } = require('../middleware/auth');
 
 // Default logistics values
 const DEFAULT_LOGISTICS = {
@@ -15,11 +16,9 @@ export const createEstimate = async (estimateData) => {
   try {
     const response = await fetch(`${API_BASE_URL}/estimates`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(estimateData),
-    });
+    headers: getHeaders(),
+    body: JSON.stringify(cleanedEstimateData),
+  });
 
     if (!response.ok) {
       const errorData = await response.json();

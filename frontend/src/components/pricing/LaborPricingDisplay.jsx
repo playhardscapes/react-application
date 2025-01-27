@@ -3,6 +3,7 @@
 import React from 'react';
 import { useLaborCosts } from '../../hooks/useLaborCosts';
 import { formatCurrency } from '../../utils/formatting';
+import { useAuth } from '@/contexts/AuthContext';
 
 const CostSection = ({ title, children }) => (
   <div className="border-t border-gray-200 py-3">
@@ -24,8 +25,8 @@ const CostRow = ({ label, value, cost, unit = '', info }) => (
 );
 
 const LaborPricingDisplay = ({ logisticsData, installationHours, pricing }) => {
-  const costs = useLaborCosts(logisticsData, installationHours, pricing);
-  const { labor, travel, hotel, perDiem, hours, details } = costs;
+  const { token } = useAuth();
+  const costs = useLaborCosts(logisticsData, installationHours, pricing, token);
 
   return (
     <div className="bg-white rounded-lg shadow p-6">

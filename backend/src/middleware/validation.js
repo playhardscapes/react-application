@@ -4,17 +4,26 @@ const { body, param, query, validationResult } = require('express-validator');
 // Middleware to handle validation errors
 const validate = (validations) => {
   return async (req, res, next) => {
-    await Promise.all(validations.map(validation => validation.run(req)));
+    console.log('Validating request:', req.path);
     
-    const errors = validationResult(req);
-    if (errors.isEmpty()) {
-      return next();
+    try {
+      await Promise.all(validations.map(validation => validation.run(req)));
+      
+      const errors = validationResult(req);
+      if (errors.isEmpty()) {
+        console.log('Validation passed');
+        return next();
+      }
+      
+      console.log('Validation errors:', errors.array());
+      return res.status(400).json({ 
+        error: 'Validation Failed', 
+        details: errors.array() 
+      });
+    } catch (err) {
+      console.error('Validation middleware error:', err);
+      next(err);
     }
-    
-    return res.status(400).json({ 
-      error: 'Validation Failed', 
-      details: errors.array() 
-    });
   };
 };
 

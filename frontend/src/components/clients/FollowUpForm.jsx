@@ -3,6 +3,9 @@ import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { PageContainer } from '@/components/layout/PageContainer';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/components/ui/use-toast';
 
 const FOLLOW_UP_TYPES = [
   { value: 'call', label: 'Phone Call' },
@@ -21,6 +24,8 @@ const PRIORITY_LEVELS = [
 const FollowUpForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { token } = useAuth();
+  const { toast } = useToast();
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState(null);
   const [clientName, setClientName] = React.useState('');
@@ -31,50 +36,96 @@ const FollowUpForm = () => {
     notes: '',
   });
 
+  // Redirect to login if no token
+  React.useEffect(() => {
+    if (!token) {
+      navigate('/login');
+      return;
+    }
+  }, [token, navigate]);
+
   // Fetch client details when component mounts
   React.useEffect(() => {
+    if (!token) return;
+
     const fetchClient = async () => {
       try {
-        const response = await fetch(`/api/clients/${id}`);
+        const response = await fetch(`/api/clients/${id}`, {
+          headers: { 
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Failed to load client details');
+        }
+
         const data = await response.json();
         setClientName(data.name);
       } catch (error) {
         console.error('Error fetching client:', error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: error.message
+        });
         setError('Failed to load client details');
       }
     };
 
     fetchClient();
-  }, [id]);
+  }, [id, token, toast]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (!token) {
+      navigate('/login');
+      return;
+    }
+
     setLoading(true);
     setError(null);
-
+  
     try {
       const response = await fetch(`/api/clients/${id}/follow-ups`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify(formData)
       });
-
+  
       if (!response.ok) {
-        throw new Error('Failed to schedule follow-up');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to schedule follow-up');
       }
-
+  
+      toast({
+        title: 'Success',
+        description: 'Follow-up scheduled successfully'
+      });
+  
       navigate(`/clients/${id}`);
     } catch (error) {
       console.error('Error scheduling follow-up:', error);
+      toast({
+        variant: "destructive",
+        title: 'Error',
+        description: error.message
+      });
       setError(error.message);
     } finally {
       setLoading(false);
     }
   };
 
+  if (error) return <div>Error: {error}</div>;
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white p-6">
-      <div className="max-w-2xl mx-auto">
+    <PageContainer>
         <Card>
           <CardHeader>
             <CardTitle>Schedule Follow-up</CardTitle>
@@ -83,12 +134,6 @@ const FollowUpForm = () => {
             )}
           </CardHeader>
           <CardContent>
-            {error && (
-              <div className="mb-4 p-4 bg-red-50 border border-red-200 text-red-600 rounded">
-                {error}
-              </div>
-            )}
-
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
                 <label className="block text-sm font-medium mb-1">Follow-up Date *</label>
@@ -176,8 +221,7 @@ const FollowUpForm = () => {
             </form>
           </CardContent>
         </Card>
-      </div>
-    </div>
+     </PageContainer>
   );
 };
 

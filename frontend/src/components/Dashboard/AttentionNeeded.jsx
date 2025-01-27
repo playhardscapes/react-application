@@ -1,20 +1,27 @@
 // src/components/Dashboard/AttentionNeeded.jsx
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { AlertCircle } from 'lucide-react';
 
 const AttentionNeeded = () => {
+  const { token } = useAuth();
   const [communications, setCommunications] = useState([]);
   const [aiSummary, setAiSummary] = useState(null);
 
   useEffect(() => {
     const fetchCommunications = async () => {
+      if (!token) return;
+      
       try {
-        const response = await fetch('/api/communications/unhandled');
+        const response = await fetch('/api/communications/unhandled', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
         const data = await response.json();
         setCommunications(data);
 
-        // Optional: Use Claude or ChatGPT to summarize communications
         if (data.length > 0) {
           const summary = await generateAISummary(data);
           setAiSummary(summary);
@@ -25,7 +32,7 @@ const AttentionNeeded = () => {
     };
 
     fetchCommunications();
-  }, []);
+  }, [token]);
 
   // AI Summary Generation Function (implementation details would depend on your AI service setup)
   const generateAISummary = async (communications) => {

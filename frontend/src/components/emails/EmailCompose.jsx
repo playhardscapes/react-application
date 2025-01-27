@@ -14,17 +14,20 @@ const EmailCompose = ({ onClose, initialEmail = {} }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const token = localStorage.getItem('token'); // Add this line
     try {
       const response = await fetch('/api/emails/send', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` // Add authorization header
+        },
         body: JSON.stringify(email)
       });
-
+  
       if (response.ok) {
         onClose();
       } else {
-        // Handle error
         const error = await response.json();
         console.error('Failed to send email:', error);
       }

@@ -1,8 +1,10 @@
-// src/components/clients/ClientNoteForm.jsx
 import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/components/ui/use-toast';
+import { PageContainer } from '@/components/layout/PageContainer';
 
 const NOTE_TYPES = [
   { value: 'communication', label: 'Communication' },
@@ -14,6 +16,8 @@ const NOTE_TYPES = [
 const ClientNoteForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { token } = useAuth();
+  const { toast } = useToast();
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState(null);
   const [formData, setFormData] = React.useState({
@@ -21,25 +25,53 @@ const ClientNoteForm = () => {
     content: '',
   });
 
+  // Redirect to login if no token
+  React.useEffect(() => {
+    if (!token) {
+      navigate('/login');
+      return;
+    }
+  }, [token, navigate]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (!token) {
+      navigate('/login');
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
     try {
       const response = await fetch(`/api/clients/${id}/notes`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify(formData)
       });
 
       if (!response.ok) {
-        throw new Error('Failed to add note');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to add note');
       }
+
+      toast({
+        title: "Success",
+        description: "Note added successfully"
+      });
 
       navigate(`/clients/${id}`);
     } catch (error) {
       console.error('Error adding note:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message
+      });
       setError(error.message);
     } finally {
       setLoading(false);
@@ -47,8 +79,7 @@ const ClientNoteForm = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white p-6">
-      <div className="max-w-2xl mx-auto">
+    <PageContainer>
         <Card>
           <CardHeader>
             <CardTitle>Add Client Note</CardTitle>
@@ -109,8 +140,7 @@ const ClientNoteForm = () => {
             </form>
           </CardContent>
         </Card>
-      </div>
-    </div>
+     </PageContainer>
   );
 };
 

@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { PenTool, Search, FileText, MoreVertical, Check } from 'lucide-react';
 import { api } from '@/utils/api';
+import { PageContainer } from '@/components/layout/PageContainer';
 
 const STATUS_COLORS = {
   draft: { bg: 'bg-yellow-100', text: 'text-yellow-800' },
@@ -64,8 +65,7 @@ const ProposalsList = () => {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white p-6">
-      <div className="max-w-7xl mx-auto">
+    <PageContainer>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
@@ -178,8 +178,7 @@ const ProposalsList = () => {
             )}
           </CardContent>
         </Card>
-      </div>
-    </div>
+      </PageContainer>
   );
 };
 

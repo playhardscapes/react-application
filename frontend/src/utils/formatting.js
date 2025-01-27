@@ -1,16 +1,12 @@
  
 // src/utils/formatting.js
 
-export const formatCurrency = (amount = 0, options = {}) => {
-  const {
-    decimals = 2,
-    showZero = false,
-    prefix = '$'
-  } = options;
+export const formatCurrency = (value) => {
+  if (value === null || value === undefined) {
+    return 'N/A';
+  }
 
-  if (!showZero && amount === 0) return '-';
-
-  return `${prefix}${amount.toFixed(decimals).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
+  return value.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 };
 
 export const formatArea = (sqFt = 0) => {

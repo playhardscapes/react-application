@@ -2,9 +2,10 @@
 const express = require('express');
 const router = express.Router();
 const vendorService = require('../services/vendorService');
+const { auth: authenticateToken } = require('../middleware/auth');
 
 // Get upcoming payments (must be before /:id routes)
-router.get('/vendors/upcoming-payments', async (req, res) => {
+router.get('/upcoming-payments', async (req, res) => {
   try {
     const payments = await vendorService.getUpcomingPayments();
     res.json(payments);
@@ -15,7 +16,7 @@ router.get('/vendors/upcoming-payments', async (req, res) => {
 });
 
 // Get all vendors
-router.get('/vendors', async (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const vendors = await vendorService.getAllVendors();
     res.json(vendors);
@@ -25,30 +26,8 @@ router.get('/vendors', async (req, res) => {
   }
 });
 
-// Create vendor
-router.post('/vendors', async (req, res) => {
-  try {
-    const vendor = await vendorService.createVendor(req.body);
-    res.status(201).json(vendor);
-  } catch (error) {
-    console.error('Error creating vendor:', error);
-    res.status(500).json({ error: 'Failed to create vendor' });
-  }
-});
-
-// Get vendor invoices (must be before /:id route)
-router.get('/vendors/:id/invoices', async (req, res) => {
-  try {
-    const invoices = await vendorService.getVendorInvoices(req.params.id);
-    res.json(invoices);
-  } catch (error) {
-    console.error('Error fetching vendor invoices:', error);
-    res.status(500).json({ error: 'Failed to fetch vendor invoices' });
-  }
-});
-
 // Get single vendor by ID
-router.get('/vendors/:id', async (req, res) => {
+router.get('/:id', async (req, res) => {
   try {
     const vendor = await vendorService.getVendorById(req.params.id);
     if (!vendor) {
@@ -61,8 +40,19 @@ router.get('/vendors/:id', async (req, res) => {
   }
 });
 
+// Get vendor invoices
+router.get('/:id/invoices', async (req, res) => {
+  try {
+    const invoices = await vendorService.getVendorInvoices(req.params.id);
+    res.json(invoices);
+  } catch (error) {
+    console.error('Error fetching vendor invoices:', error);
+    res.status(500).json({ error: 'Failed to fetch vendor invoices' });
+  }
+});
+
 // Update vendor
-router.put('/vendors/:id', async (req, res) => {
+router.put('/:id', async (req, res) => {
   try {
     const vendor = await vendorService.updateVendor(req.params.id, req.body);
     if (!vendor) {
@@ -76,7 +66,7 @@ router.put('/vendors/:id', async (req, res) => {
 });
 
 // Delete vendor
-router.delete('/vendors/:id', async (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
     const result = await vendorService.deleteVendor(req.params.id);
     if (!result) {

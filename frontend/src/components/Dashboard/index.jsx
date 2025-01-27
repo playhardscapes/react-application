@@ -1,241 +1,215 @@
 // src/components/Dashboard/index.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { useAuth } from '@/contexts/AuthContext';
+import WelcomeSection from './WelcomeSection';
+import DashboardSection from './DashboardSection';
 import { 
-  PenTool,
-  Files,
-  FileText,
-  Building2,
-  Package,
-  Clock,
-  Calendar,
-  Users,
-  Truck,
-  AlertCircle,
-  FileSpreadsheet,
-  DollarSign,
-  Mail,  // Add this import
-  MessageCircle  // Add this import if not already present
+  PenTool, Files, FileText, Building2, Truck, MessageCircle,
+  Mail, Brain, Users, DollarSign, Calendar, AlertCircle,
+  Package, FileSpreadsheet, HardHat, Clock, Wrench, LogOut,
+  UserSquare2, Loader2, ClipboardList, Banknote, Receipt, ShoppingCart, CreditCard, 
 } from 'lucide-react';
-
-// Quick Action Card Component
-const DashboardCard = ({ icon: Icon, title, description, onClick, status, communicationCount }) => (
-  <Card 
-    className="cursor-pointer transition-all hover:shadow-lg"
-    onClick={onClick}
-  >
-    <CardHeader>
-      <div className="flex items-center space-x-3">
-        <Icon className="h-6 w-6 text-blue-600" />
-        <div>
-          <CardTitle>{title}</CardTitle>
-          <CardDescription>{description}</CardDescription>
-          {status && (
-            <span className="inline-block mt-2 px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-800">
-              {status}
-            </span>
-          )}
-          {communicationCount > 0 && (
-            <span className="inline-block ml-2 px-2 py-1 text-xs rounded-full bg-red-100 text-red-800">
-              {communicationCount} Unhandled
-            </span>
-          )}
-        </div>
-      </div>
-    </CardHeader>
-  </Card>
-);
-
-// Attention Needed Section
-const AttentionNeeded = () => {
-  const [communications, setCommunications] = useState([]);
-  const [aiSummary, setAiSummary] = useState(null);
-
-  useEffect(() => {
-    const fetchCommunications = async () => {
-      try {
-        const response = await fetch('/api/communications/unhandled');
-        const data = await response.json();
-        setCommunications(data);
-
-        // Optional: AI Summary Generation (placeholder)
-        // You'll implement actual AI integration later
-        if (data.length > 0) {
-          setAiSummary("Quick AI summary of communications would appear here.");
-        }
-      } catch (error) {
-        console.error('Failed to fetch communications', error);
-      }
-    };
-
-    fetchCommunications();
-  }, []);
-
-  return (
-    <Card className="col-span-full">
-      <CardHeader>
-        <CardTitle className="text-red-600 flex items-center gap-2">
-          <AlertCircle className="h-5 w-5" />
-          Needs Attention
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-red-50 p-3 rounded">
-            <p className="font-medium">3 Proposals Awaiting Follow-up</p>
-            <p className="text-sm text-gray-600">Oldest: 8 days ago</p>
-          </div>
-          <div className="bg-yellow-50 p-3 rounded">
-            <p className="font-medium">2 Projects Need Scheduling</p>
-            <p className="text-sm text-gray-600">Weather window closing</p>
-          </div>
-          <div className="bg-blue-50 p-3 rounded">
-            <p className="font-medium">4 Invoices Due This Week</p>
-            <p className="text-sm text-gray-600">Total: $3,450</p>
-          </div>
-          <div className="bg-green-50 p-3 rounded">
-            <p className="font-medium">{communications.length} Unhandled Communications</p>
-            {aiSummary && (
-              <p className="text-sm text-gray-700 mt-2 italic">
-                {aiSummary}
-              </p>
-            )}
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-};
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const { user, logout, loading, isAuthenticated } = useAuth();
   const [communicationCount, setCommunicationCount] = useState(0);
 
+  // Redirect to login if not authenticated
   useEffect(() => {
-    const fetchCommunicationCount = async () => {
-      try {
-        const response = await fetch('/api/communications/unhandled/count');
-        const data = await response.json();
-        setCommunicationCount(data.count);
-      } catch (error) {
-        console.error('Failed to fetch communication count', error);
-      }
-    };
+    if (!loading && !isAuthenticated) {
+      navigate('/login');
+      return;
+    }
+  }, [loading, isAuthenticated, navigate]);
 
-    fetchCommunicationCount();
-  }, []);
+  
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-8 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto" />
+          <p className="mt-2">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render if not authenticated
+  if (!isAuthenticated || !user) {
+    return null;
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Play Hardscapes Portal</h1>
-          <p className="text-gray-600 mt-2">Business Management System</p>
-        </div>
+    <div className="min-h-screen bg-gray-50 p-8">
+      <div className="max-w-7xl mx-auto">
+        <WelcomeSection user={user} onLogout={logout} />
 
-        <AttentionNeeded />
+        <DashboardSection
+          title="Business Operations"
+          items={[
+             {
+              icon: Package,
+              title: "Inventory",
+              description: "Materials and tools tracking",
+              onClick: () => navigate('/inventory')
+            }, 
+            {
+              icon: ClipboardList,
+              title: "Purchase Orders",
+              description: "Create and manage purchase orders",
+              onClick: () => navigate('/inventory/orders')
+            },  
+            {
+              icon: ShoppingCart,
+              title: "Receive Materials",
+              description: "Process and log incoming inventory",
+              onClick: () => navigate('/inventory/materials/receive')
+            },   
+            {
+              icon: Truck,
+              title: "Vendors",
+              description: "Manage supplier relationships and payments",
+              onClick: () => navigate('/vendors')
+            },
+            {
+              icon: Banknote,
+              title: "Bills",
+              description: "Track and manage vendor bills",
+              onClick: () => navigate('/inventory/vendor-bills')
+            },
+            {
+              icon: DollarSign,
+              title: "Pricing",
+              description: "Configure product and service pricing",
+              onClick: () => navigate('/pricing')
+            },
+            {
+              icon: FileText,
+              title: "Document Management",
+              description: "Organize and share documents",
+              onClick: () => navigate('/documents')
+            },              
+            {
+              icon: UserSquare2,
+              title: "User Management",
+              description: "Manage system users and access",
+              onClick: () => navigate('/users-management')
+            },
+            {
+              icon: Brain,
+              title: "AI Development Partner",
+              description: "System insights and improvements",
+              onClick: () => navigate('/ai-dashboard')
+            }
+          ]}
+        />
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <DashboardCard
-            icon={Users}
-            title="Clients"
-            description="Client management and follow-ups"
-            onClick={() => navigate('/clients')}
-            status="Coming Soon"
-          />
-          
-          <DashboardCard
-            icon={PenTool}
-            title="Create Estimate"
-            description="Build a new project estimate"
-            onClick={() => navigate('/estimate/new')}
-          />
-          
-          <DashboardCard
-            icon={FileSpreadsheet}
-            title="Estimates"
-            description="View and manage saved estimates"
-            onClick={() => navigate('/estimates')}
-          />
-          
-          <DashboardCard
-            icon={Files}
-            title="Proposals"
-            description="View and manage existing proposals"
-            onClick={() => navigate('/proposals')}
-          />
+        <DashboardSection
+          title="Client and Project Management"
+          items={[
+            {
+              icon: Users,
+              title: "Clients",
+              description: "Client relationship management",
+              onClick: () => navigate('/clients')
+            },
+            {
+              icon: PenTool,
+              title: "Estimates",
+              description: "Create and manage project estimates",
+              onClick: () => navigate('/estimates')
+            },
+            {
+              icon: Files,
+              title: "Proposals",
+              description: "Generate and track proposals",
+              onClick: () => navigate('/proposals')
+            },
+            {
+              icon: FileText,
+              title: "Contracts",
+              description: "Manage project contracts",
+              onClick: () => navigate('/contracts')
+            },
+            {
+              icon: Calendar,
+              title: "Scheduling",
+              description: "Project timelines and weather tracking",
+              onClick: () => navigate('/projects/schedule')
+            },
+            {
+              icon: HardHat,
+              title: "Projects",
+              description: "Manage ongoing construction",
+              onClick: () => navigate('/projects')
+            },
+            {
+              icon: Wrench,
+              title: "Project Tasks",
+              description: "Track and assign work items",
+              onClick: () => navigate('/tasks')
+            },
+            {
+              icon: Clock,
+              title: "Time Tracking",
+              description: "Monitor project hours",
+              onClick: () => navigate('/time-tracking')
+            },
+            {
+              icon: Receipt,
+              title: "Invoices",
+              description: "Generate and track customer invoices",
+              onClick: () => navigate('/invoices')
+            }
+          ]}
+        />
 
-          <DashboardCard
-            icon={FileText}
-            title="Contracts"
-            description="Generate and track contracts"
-            onClick={() => navigate('/contracts')}
-          />
+        <DashboardSection
+          title="Communication"
+          items={[
+            {
+              icon: MessageCircle,
+              title: "Communications",
+              description: "Client messages and inquiries",
+              onClick: () => navigate('/communications'),
+              badge: communicationCount
+            },
+            {
+              icon: Mail,
+              title: "Email Management",
+              description: "Inbox and email tracking",
+              onClick: () => navigate('/emails')
+            }
+          ]}
+        />
 
-          
-
-          {/* Project Management */}
-          <DashboardCard
-            icon={Calendar}
-            title="Scheduling"
-            description="Weather-integrated project scheduling"
-            onClick={() => navigate('/scheduling')}
-            status="Coming Soon"
-          />
-
-          <DashboardCard
-            icon={Building2}
-            title="Active Projects"
-            description="Track ongoing projects"
-            onClick={() => navigate('/projects')}
-            status="Coming Soon"
-          />
-
-          {/* Business Management */}
-          <DashboardCard
-            icon={Truck}
-            title="Vendors"
-            description="Manage vendors and payments"
-            onClick={() => navigate('/vendors')}
-          />
-
-          <DashboardCard
-            icon={Package}
-            title="Inventory"
-            description="Track materials and equipment"
-            onClick={() => navigate('/inventory')}
-            status="Coming Soon"
-          />
-          <DashboardCard
-            icon={Clock}
-            title="Time Tracking"
-            description="Manage hours and schedules"
-            onClick={() => navigate('/time')}
-            status="Coming Soon"
-          />
-            <DashboardCard
-            icon={DollarSign}
-            title="Pricing"
-            description="Manage pricing configurations"
-            onClick={() => navigate('/pricing')}
-          />
-
-<DashboardCard
-  icon={MessageCircle}
-  title="Communications"
-  description="Manage client messages and inquiries"
-  onClick={() => navigate('/communications')}
-  communicationCount={communicationCount}
-/>
-
-<DashboardCard
-  icon={Mail}
-  title="Email Management"
-  description="Full email inbox and management"
-  onClick={() => navigate('/emails')}
-/>
-        </div>
+               <DashboardSection
+          title="Financial Management"
+          items={[
+            {
+              icon: Receipt,
+              title: "Quick Expense",
+              description: "Snap & process receipts",
+              onClick: () => navigate('/finance/expenses/quick-entry')
+            },
+            {
+              icon: CreditCard,
+              title: "Card Activity",
+              description: "Track card transactions",
+              onClick: () => navigate('/finance/cards')
+            },
+            {
+              icon: Building2,
+              title: "Financial Hub",
+              description: "Complete financial management",
+              onClick: () => navigate('/finance/hub'),
+              className: "bg-blue-50 hover:bg-blue-100" // Highlight this option
+            }
+          ]}
+         />
       </div>
     </div>
   );

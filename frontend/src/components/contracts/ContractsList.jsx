@@ -3,6 +3,7 @@ import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { FileText, AlertCircle } from 'lucide-react';
+import { PageContainer } from '@/components/layout/PageContainer';
 
 const ContractsList = () => {
   const [contracts, setContracts] = useState([]);
@@ -52,8 +53,7 @@ const ContractsList = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white p-6">
-      <div className="max-w-7xl mx-auto">
+    <PageContainer>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
@@ -119,8 +119,7 @@ const ContractsList = () => {
             )}
           </CardContent>
         </Card>
-      </div>
-    </div>
+      </PageContainer>
   );
 };
 

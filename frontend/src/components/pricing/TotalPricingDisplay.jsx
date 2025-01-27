@@ -1,5 +1,6 @@
 // src/components/pricing/TotalPricingDisplay.jsx
 import React from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 import { useMaterialsCosts } from '../../hooks/useMaterialsCosts';
 import { useEquipmentCosts } from '../../hooks/useEquipmentCosts';
 import { useLaborCosts } from '../../hooks/useLaborCosts';
@@ -26,9 +27,10 @@ const OptionCard = ({ title, items, total }) => (
 );
 
 const TotalPricingDisplay = ({ projectData, pricing }) => {
-  const materialsCosts = useMaterialsCosts(projectData.surfaceSystem, projectData.dimensions, pricing);
-  const equipmentCosts = useEquipmentCosts(projectData.equipment);
-  const laborCosts = useLaborCosts(projectData.logistics, 0, pricing); // Base labor without equipment installation
+  const { token } = useAuth();
+  const materialsCosts = useMaterialsCosts(projectData.surfaceSystem, projectData.dimensions, pricing, token);
+  const equipmentCosts = useEquipmentCosts(projectData.equipment, token);
+  const laborCosts = useLaborCosts(projectData.logistics, 0, pricing, token);
 
   const calculateBaseTotal = () => {
     return materialsCosts.total + laborCosts.total;

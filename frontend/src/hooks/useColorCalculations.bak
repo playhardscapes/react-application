@@ -1,0 +1,196 @@
+// src/hooks/useColorCoatCosts.js
+import { useMemo } from 'react';
+import { usePricing } from './usePricing';
+
+const COURT_DIMENSIONS = {
+  tennis: { width: 36, length: 78 },
+  pickleball: {
+    kitchen: { width: 14, length: 20 },
+    court: { width: 30, length: 20 }
+  },
+  basketball: {
+    half: { width: 50, length: 50 },
+    full: { width: 100, length: 50 }
+  }
+};
+
+export const useColorCoatCosts = (data) => {
+  const { getPriceByName } = usePricing();
+
+  return useMemo(() => {
+    const calculateResurfacer = () => {
+      if (!data.square_footage) return { materials: 0, installation: 0, total: 0 };
+
+      const SQFT_PER_GALLON = 100;
+      const WASTE_FACTOR = 1.25;
+      const COATS = 2;
+      const GALLONS_PER_DRUM = 30;
+      const FREIGHT_PER_DRUM = 100;
+
+      // Calculate gallons needed
+      const baseGallons = data.square_footage / SQFT_PER_GALLON;
+      const gallonsWithWaste = baseGallons * WASTE_FACTOR;
+      const totalGallons = gallonsWithWaste * COATS;
+
+      // Calculate drums (rounded up)
+      const drumsNeeded = Math.ceil(totalGallons / GALLONS_PER_DRUM);
+
+      // Get prices
+      const materialPricePerDrum = getPriceByName('Acrylic Resurfacer - Material') || 0;
+      const installationPricePerSqFt = getPriceByName('Acyrlic Refurfacer - (2) Coats') || 0;
+
+      const materialCost = (drumsNeeded * materialPricePerDrum) + (drumsNeeded * FREIGHT_PER_DRUM);
+      const installationCost = data.square_footage * installationPricePerSqFt;
+
+      return {
+        materials: materialCost,
+        installation: installationCost,
+        total: materialCost + installationCost,
+        details: {
+          gallons: totalGallons,
+          drums: drumsNeeded
+        }
+      };
+    };
+
+    const calculateColorAreas = () => {
+      let areas = new Map();
+      let totalColoredArea = 0;
+
+      // Tennis Courts
+      if (data.tennis_courts > 0) {
+        const area = COURT_DIMENSIONS.tennis.width * 
+                    COURT_DIMENSIONS.tennis.length * 
+                    data.tennis_courts;
+        areas.set('tennis', {
+          area,
+          color: data.tennis_court_color
+        });
+        totalColoredArea += area;
+      }
+
+      // Pickleball Courts
+      if (data.pickleball_courts > 0) {
+        // Kitchen area
+        const kitchenArea = COURT_DIMENSIONS.pickleball.kitchen.width * 
+                          COURT_DIMENSIONS.pickleball.kitchen.length * 
+                          data.pickleball_courts;
+        areas.set('pickleball_kitchen', {
+          area: kitchenArea,
+          color: data.pickleball_kitchen_color
+        });
+        totalColoredArea += kitchenArea;
+
+        // Court area
+        const courtArea = COURT_DIMENSIONS.pickleball.court.width * 
+                         COURT_DIMENSIONS.pickleball.court.length * 
+                         data.pickleball_courts;
+        areas.set('pickleball_court', {
+          area: courtArea,
+          color: data.pickleball_court_color
+        });
+        totalColoredArea += courtArea;
+      }
+
+      // Basketball Court
+      if (data.basketball_courts > 0) {
+        const dimensions = data.basketball_court_type === 'half' ? 
+                          COURT_DIMENSIONS.basketball.half : 
+                          COURT_DIMENSIONS.basketball.full;
+        const area = dimensions.width * dimensions.length;
+        areas.set('basketball', {
+          area,
+          color: data.basketball_court_color
+        });
+        totalColoredArea += area;
+      }
+
+      // Calculate remaining area for apron
+      const remainingArea = Math.max(0, data.square_footage - totalColoredArea);
+      if (remainingArea > 0 && data.apron_color) {
+        areas.set('apron', {
+          area: remainingArea,
+          color: data.apron_color
+        });
+      }
+
+      return areas;
+    };
+
+    const calculateColorCosts = () => {
+      const areas = calculateColorAreas();
+      const colorCosts = new Map();
+      let total = 0;
+
+      const calculateGallonsForArea = (sqFt) => {
+        const SQFT_PER_GALLON = 100;
+        const WASTE_FACTOR = 1.25;
+        const COATS = 2;
+        return Math.ceil((sqFt / SQFT_PER_GALLON) * WASTE_FACTOR * COATS);
+      };
+
+      areas.forEach((areaData, areaType) => {
+        const gallons = calculateGallonsForArea(areaData.area);
+        const drumsNeeded = Math.ceil(gallons / 30);
+        const colorPrice = getPriceByName(`Color Coat - ${areaData.color}`) || 0;
+        const cost = (drumsNeeded * colorPrice) + (drumsNeeded * 100); // 100 is freight per drum
+
+        colorCosts.set(areaType, {
+          area: areaData.area,
+          color: areaData.color,
+          gallons,
+          drums: drumsNeeded,
+          cost
+        });
+
+        total += cost;
+      });
+
+      return { colorCosts, total };
+    };
+
+    const resurfacer = calculateResurfacer();
+    const colors = calculateColorCosts();
+    const baseInstallation = (data.square_footage || 0) * 
+                           (getPriceByName('Color Coat Installation - (2) Coats') || 0);
+
+    // Calculate color upcharge based on unique colors
+    const uniqueColors = new Set(
+      Array.from(colors.colorCosts.values()).map(c => c.color)
+    ).size;
+
+    let upchargeRate = 0;
+    if (uniqueColors === 2) upchargeRate = getPriceByName('Color Coat Installation (2) Color Up-charge');
+    else if (uniqueColors === 3) upchargeRate = getPriceByName('Color Coat Installation (3) Color Up-charge');
+    else if (uniqueColors === 4) upchargeRate = getPriceByName('Color Coat Installation (4) Color Up-charge');
+    else if (uniqueColors >= 5) upchargeRate = getPriceByName('Color Coat Installation (5) Color Up-charge');
+
+    const upchargeCost = (data.square_footage || 0) * (upchargeRate || 0);
+
+    return {
+      resurfacer,
+      colors,
+      installation: {
+        base: baseInstallation,
+        upcharge: upchargeCost,
+        total: baseInstallation + upchargeCost,
+        uniqueColors
+      }
+    };
+  }, [data, getPriceByName]);
+};
+
+const result = {
+  resurfacer: calculateResurfacer(),
+  colors: calculateColorCosts(),
+  installation: calculateInstallationCosts()
+};
+
+console.log('Color Coat Calculations:', {
+  resurfacer: result.resurfacer,
+  colors: result.colors,
+  installation: result.installation,
+  data: data
+});
+
+return result;

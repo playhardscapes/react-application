@@ -1,106 +1,114 @@
 // src/hooks/useEquipmentCosts.js
-import { useMemo } from 'react';
+import { usePricing } from './usePricing';
 
-export const useEquipmentCosts = (estimateData, pricing) => {
-  return useMemo(() => {
-    if (!estimateData || !pricing?.equipment) return { total: 0 };
+export const useEquipmentCosts = (data) => {
+  const { getPriceByName } = usePricing();
 
-    // Ensure we have the required pricing structures
-    const equipment = pricing.equipment || {};
-    const services = pricing.services || {};
-    
-    // Add some debug logging
-    console.log('Equipment pricing:', equipment);
-    console.log('Services pricing:', services);
+  const calculateTennisCosts = () => {
+    if (!data.tennis_post_sets) return { equipment: 0, installation: 0, total: 0 };
 
-    // Tennis posts calculation
-    const tennisPosts = {
-      equipment: (estimateData.permanent_tennis_poles || 0) * (equipment.posts?.tennis?.price || 0),
-      installation: (estimateData.permanent_tennis_poles || 0) * (equipment.posts?.tennis?.installationTime || 0) *
-                   (equipment.installation?.laborRate || 0),
-      holes: (estimateData.permanent_tennis_poles || 0) * 2 * (equipment.installation?.holeCutting || 0),
-      concrete: (estimateData.permanent_tennis_poles || 0) * 2 * (equipment.installation?.concretePerHole || 0),
-      total: 0
-    };
-    tennisPosts.total = tennisPosts.equipment + tennisPosts.installation + tennisPosts.holes + tennisPosts.concrete;
-
-    // Pickleball equipment calculation
-    const pickleballPosts = {
-      equipment: (estimateData.permanent_pickleball_poles || 0) * (equipment.posts?.pickleball?.price || 0),
-      installation: (estimateData.permanent_pickleball_poles || 0) * (equipment.posts?.pickleball?.installationTime || 0) *
-                   (equipment.installation?.laborRate || 0),
-      holes: (estimateData.permanent_pickleball_poles || 0) * 2 * (equipment.installation?.holeCutting || 0),
-      concrete: (estimateData.permanent_pickleball_poles || 0) * 2 * (equipment.installation?.concretePerHole || 0),
-      total: 0
-    };
-    pickleballPosts.total = pickleballPosts.equipment + pickleballPosts.installation + pickleballPosts.holes + pickleballPosts.concrete;
-
-    // Mobile pickleball nets
-    const mobilePickleball = {
-      equipment: (estimateData.mobile_pickleball_nets || 0) * (equipment.posts?.mobilePickleball?.price || 0),
-      total: 0
-    };
-    mobilePickleball.total = mobilePickleball.equipment;
-
-    // Windscreen calculation
-    const windscreen = {
-      lowGrade: {
-        equipment: (estimateData.low_grade_windscreen || 0) * (equipment.windscreen?.lowGrade?.price || 0),
-        installation: (estimateData.low_grade_windscreen || 0) * (equipment.windscreen?.lowGrade?.installationTime || 0) *
-                     (equipment.installation?.laborRate || 0),
-        total: 0
-      },
-      highGrade: {
-        equipment: (estimateData.high_grade_windscreen || 0) * (equipment.windscreen?.highGrade?.price || 0),
-        installation: (estimateData.high_grade_windscreen || 0) * (equipment.windscreen?.highGrade?.installationTime || 0) *
-                     (equipment.installation?.laborRate || 0),
-        total: 0
-      }
-    };
-    windscreen.lowGrade.total = windscreen.lowGrade.equipment + windscreen.lowGrade.installation;
-    windscreen.highGrade.total = windscreen.highGrade.total + windscreen.highGrade.installation;
-
-    // Basketball systems calculation
-    let basketballSystems = [];
-    // Ensure basketball_systems is an array before processing
-    if (Array.isArray(estimateData.basketball_systems)) {
-      basketballSystems = estimateData.basketball_systems.map(system => {
-        const baseSystem = equipment.basketball?.systems?.[system.type || 'adjustable']?.[system.mounted || 'ground'] || {};
-        const extensionCost = ((system.extension || 4) - 4) * (equipment.basketball?.extensions?.pricePerFoot || 0);
-
-        return {
-          equipment: (baseSystem.price || 0) + extensionCost,
-          installation: (baseSystem.installationTime || 0) * (equipment.installation?.laborRate || 0),
-          holes: system.mounted === 'ground' ? (equipment.installation?.holeCutting || 0) : 0,
-          concrete: system.mounted === 'ground' ? (equipment.installation?.concretePerHole || 0) : 0
-        };
-      });
-    }
-
-    const basketballTotal = basketballSystems.reduce((sum, system) =>
-      sum + system.equipment + system.installation + system.holes + system.concrete, 0);
-
-    // Calculate grand total
-    const grandTotal =
-      tennisPosts.total +
-      pickleballPosts.total +
-      mobilePickleball.total +
-      windscreen.lowGrade.total +
-      windscreen.highGrade.total +
-      basketballTotal;
+    const equipmentCost = data.tennis_post_sets * getPriceByName('Tennis Posts and Net');
+    const installationCost = data.tennis_posts_installation ? 
+      data.tennis_post_sets * getPriceByName('Tennis Net Footer - Cut, Dig, Fill (2)') : 0;
 
     return {
-      posts: {
-        tennis: tennisPosts,
-        pickleball: pickleballPosts,
-        mobilePickleball: mobilePickleball
-      },
-      windscreen,
-      basketball: {
-        systems: basketballSystems,
-        total: basketballTotal
-      },
-      total: grandTotal
+      equipment: equipmentCost,
+      installation: installationCost,
+      total: equipmentCost + installationCost,
+      sets: data.tennis_post_sets
     };
-  }, [estimateData, pricing]);
+  };
+
+  const calculatePickleballCosts = () => {
+    const permanentPosts = {
+      equipment: data.pickleball_post_sets * getPriceByName('Pickleball Posts and Net'),
+      installation: data.pickleball_posts_installation ?
+        data.pickleball_post_sets * getPriceByName('Pickleball Net Footer - Cut, Dig, Fill (2)') : 0,
+      sets: data.pickleball_post_sets
+    };
+    permanentPosts.total = permanentPosts.equipment + permanentPosts.installation;
+
+    const mobileNets = {
+      equipment: data.mobile_pickleball_nets * getPriceByName('Mobile Pickleball Nets'),
+      count: data.mobile_pickleball_nets
+    };
+
+    return {
+      permanentPosts,
+      mobileNets,
+      total: permanentPosts.total + mobileNets.equipment
+    };
+  };
+
+  const calculateBasketballCosts = () => {
+    let equipment = 0;
+    let installation = 0;
+    const details = {
+      hoops: {
+        'adjustable-60': {
+          count: data.basketball_60_count || 0,
+          cost: (data.basketball_60_count || 0) * getPriceByName('Adjustable Basketball Hoop 60"')
+        },
+        'adjustable-72': {
+          count: data.basketball_72_count || 0,
+          cost: (data.basketball_72_count || 0) * getPriceByName('Adjustable Basketball Hoop 72"')
+        },
+        'fixed': {
+          count: data.basketball_fixed_count || 0,
+          cost: (data.basketball_fixed_count || 0) * getPriceByName('Fixed Height Hoop')
+        }
+      }
+    };
+
+    // Sum up equipment costs
+    equipment = Object.values(details.hoops).reduce((sum, hoop) => sum + hoop.cost, 0);
+
+    // Calculate installation if needed
+    if (data.basketball_installation) {
+      const totalHoops = Object.values(details.hoops)
+        .reduce((sum, hoop) => sum + hoop.count, 0);
+      installation = totalHoops * getPriceByName('Basketball Hoop Footer - Cut, Dig, Fill (1)');
+    }
+
+    return {
+      equipment,
+      installation,
+      total: equipment + installation,
+      details
+    };
+  };
+
+  const calculateWindscreenCosts = () => {
+    const standardWindscreen = {
+      length: data.standard_windscreen || 0,
+      equipment: (data.standard_windscreen || 0) * getPriceByName('Windscreen')
+    };
+
+    const highGradeWindscreen = {
+      length: data.high_grade_windscreen || 0,
+      equipment: (data.high_grade_windscreen || 0) * getPriceByName('High Grade Windscreen')
+    };
+
+    const installation = data.windscreen_installation ?
+      (standardWindscreen.length + highGradeWindscreen.length) * 
+      getPriceByName('Windscreen Installation Cost') : 0;
+
+    return {
+      standard: standardWindscreen,
+      highGrade: highGradeWindscreen,
+      installation,
+      total: standardWindscreen.equipment + highGradeWindscreen.equipment + installation
+    };
+  };
+
+  return {
+    tennis: calculateTennisCosts(),
+    pickleball: calculatePickleballCosts(),
+    basketball: calculateBasketballCosts(),
+    windscreen: calculateWindscreenCosts(),
+    total: calculateTennisCosts().total + 
+           calculatePickleballCosts().total + 
+           calculateBasketballCosts().total + 
+           calculateWindscreenCosts().total
+  };
 };

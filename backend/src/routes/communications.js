@@ -74,5 +74,52 @@ router.patch('/:id/status', async (req, res) => {
     res.status(500).json({ error: 'Failed to update communication' });
   }
 });
+router.put('/:id/archive', async (req, res) => {
+  const client = await db.pool.connect();
+  try {
+    const { id } = req.params;
+
+    // Log archive attempt
+    logger.info(`Attempting to archive client with ID: ${id}`);
+
+    // Start a transaction to ensure data integrity
+    await client.query('BEGIN');
+
+    // Update the client record
+    await client.query('UPDATE clients SET is_archived = true WHERE id = $1 RETURNING *', [id]);
+
+    // Update associated follow-ups
+    await client.query('UPDATE client_follow_ups SET is_archived = true WHERE client_id = $1', [id]);
+
+    // Update associated notes
+    await client.query('UPDATE client_notes SET is_archived = true WHERE client_id = $1', [id]);
+
+    // Update associated projects (optional, depending on your business logic)
+    await client.query('UPDATE projects SET is_archived = true WHERE client_id = $1', [id]);
+
+    // Commit the transaction
+    await client.query('COMMIT');
+
+    logger.info(`Successfully archived client with ID: ${id}`);
+    res.json({ message: 'Client archived successfully' });
+  } catch (error) {
+    // Rollback the transaction in case of error
+    await client.query('ROLLBACK');
+
+    logger.error('Error archiving client', {
+      clientId: req.params.id,
+      errorMessage: error.message,
+      errorStack: error.stack
+    });
+
+    res.status(500).json({ 
+      error: 'Failed to archive client', 
+      details: error.message 
+    });
+  } finally {
+    // Always release the client back to the pool
+    client.release();
+  }
+});
 
 module.exports = router;

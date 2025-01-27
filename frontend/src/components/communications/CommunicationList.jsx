@@ -1,16 +1,11 @@
 // src/components/communications/CommunicationList.jsx
 import React, { useState, useEffect } from 'react';
-import { 
-  Mail, 
-  MessageCircle, 
-  PhoneCall, 
-  Filter, 
-  Search 
-} from 'lucide-react';
-
+import { useAuth } from '@/contexts/AuthContext';
+import { Mail, MessageCircle, PhoneCall, Search } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { PageContainer } from '@/components/layout/PageContainer';
 
 const CommunicationBadge = ({ type }) => {
   const badgeStyles = {
@@ -84,6 +79,7 @@ const CommunicationItem = ({ communication, onAction }) => {
 };
 
 const CommunicationList = () => {
+  const { token } = useAuth();
   const [communications, setCommunications] = useState([]);
   const [filter, setFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -91,17 +87,21 @@ const CommunicationList = () => {
 
   useEffect(() => {
     const fetchCommunications = async () => {
+      if (!token) return;
+      
       try {
-        // Fetch from multiple endpoints
         const [emailsResponse, communicationsResponse] = await Promise.all([
-          fetch('/api/emails?status=unhandled'),
-          fetch('/api/communications/unhandled')
+          fetch('/api/emails?status=unhandled', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          }),
+          fetch('/api/communications/unhandled', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          })
         ]);
 
         const emailsData = await emailsResponse.json();
         const communicationsData = await communicationsResponse.json();
 
-        // Combine and normalize data
         const combinedCommunications = [
           ...emailsData.emails.map(email => ({
             ...email,
@@ -114,31 +114,32 @@ const CommunicationList = () => {
         ];
 
         setCommunications(combinedCommunications);
-        setLoading(false);
       } catch (error) {
         console.error('Error fetching communications:', error);
+      } finally {
         setLoading(false);
       }
     };
 
     fetchCommunications();
-  }, []);
+  }, [token]);
 
   const handleCommunicationAction = async (communication, action) => {
     try {
-      // Determine the correct endpoint based on communication type
       const endpoint = communication.type === 'email' 
         ? `/api/emails/${communication.id}/status`
         : `/api/communications/${communication.id}/status`;
 
       const response = await fetch(endpoint, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ status: action })
       });
 
       if (response.ok) {
-        // Remove the communication from the list
         setCommunications(prev => 
           prev.filter(comm => comm.id !== communication.id)
         );

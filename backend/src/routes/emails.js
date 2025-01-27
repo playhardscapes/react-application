@@ -2,10 +2,11 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../config/database');
+const { auth } = require('../middleware/auth');
 // In emails.js routes
 const MicrosoftGraphService = require('../services/microsoftGraphService');
 
-router.post('/send', async (req, res) => {
+router.post('/send', auth, async (req, res) => {
   try {
     const { to, subject, body } = req.body;
     const result = await MicrosoftGraphService.sendEmail(to, subject, body);
@@ -18,7 +19,7 @@ router.post('/send', async (req, res) => {
   }
 });
 
-router.post('/:id/reply', async (req, res) => {
+router.post('/:id/reply', auth, async (req, res) => {
   try {
     const { id } = req.params;
     const { body } = req.body;
@@ -32,23 +33,16 @@ router.post('/:id/reply', async (req, res) => {
   }
 });
 
-router.get('/test-fetch', async (req, res) => {
-    try {
-      const emails = await MicrosoftGraphService.fetchEmails();
-      res.json({ success: true, emails });
-    } catch (error) {
-      res.status(500).json({ success: false, error: error.message });
-    }
-  });
+router.get('/test-fetch', auth, async (req, res) => {
+  try {
+    const emails = await MicrosoftGraphService.fetchEmails();
+    res.json({ success: true, emails });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
 
-
-
-
-
-
-
-
-router.get('/', async (req, res) => {
+router.get('/', auth, async (req, res) => {
     try {
       const { 
         folder = 'inbox', 
@@ -72,17 +66,20 @@ router.get('/', async (req, res) => {
       const offset = (pageNum - 1) * limitNum;
   
       let query = `
-        SELECT 
-          id, 
-          sender_email, 
-          sender_name, 
-          subject, 
-          received_at, 
-          status, 
-          category
-        FROM emails
-        WHERE 1=1
-      `;
+  SELECT 
+    id, 
+    sender_email, 
+    sender_name, 
+    subject, 
+    received_at, 
+    status, 
+    category,
+    body,
+    html_body,
+    recipient_email
+  FROM emails
+  WHERE 1=1
+`;
   
       const queryParams = [];
       let paramCount = 1;
@@ -90,12 +87,15 @@ router.get('/', async (req, res) => {
       // Add folder-based status filter
       switch(folder) {
         case 'inbox':
-          query += ` AND status NOT IN ('archived', 'deleted')`;
+          query += ` AND status = 'unread'`;
+          break;
+        case 'sent':
+          query += ` AND status = 'sent'`;
           break;
         case 'archived':
           query += ` AND status = 'archived'`;
           break;
-        case 'deleted':
+        case 'trashed':
           query += ` AND status = 'deleted'`;
           break;
       }

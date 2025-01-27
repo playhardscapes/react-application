@@ -3,18 +3,23 @@ const db = require('../config/database');
 
 const vendorService = {
   getAllVendors: async function() {
-    const query = `
-      SELECT 
-        v.*,
-        COUNT(i.id) as open_invoices,
-        SUM(CASE WHEN i.status = 'pending' THEN i.amount ELSE 0 END) as total_outstanding
-      FROM vendors v
-      LEFT JOIN invoices i ON v.id = i.vendor_id AND i.status = 'pending'
-      GROUP BY v.id
-      ORDER BY v.name
-    `;
-    const result = await db.query(query);
-    return result.rows;
+    try {
+      const query = `
+        SELECT 
+          v.*,
+          COUNT(i.id) as open_invoices,
+          SUM(CASE WHEN i.status = 'pending' THEN i.amount ELSE 0 END) as total_outstanding
+        FROM vendors v
+        LEFT JOIN invoices i ON v.id = i.vendor_id AND i.status = 'pending'
+        GROUP BY v.id
+        ORDER BY v.name
+      `;
+      const result = await db.query(query);
+      return result.rows || []; // Ensure an array is always returned
+    } catch (error) {
+      console.error('Error in getAllVendors:', error);
+      return []; // Return empty array on error
+    }
   },
 
   getVendorById: async function(id) {

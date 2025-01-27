@@ -4,6 +4,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { FileDown, Filter, AlertTriangle } from 'lucide-react';
+import { PageContainer } from '@/components/layout/PageContainer';
 
 const InvoiceList = () => {
   const navigate = useNavigate();
@@ -131,8 +132,7 @@ const InvoiceList = () => {
   });
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <PageContainer>
         {/* Header */}
         <div className="flex justify-between items-start">
           <div>
@@ -289,8 +289,7 @@ const InvoiceList = () => {
             )}
           </CardContent>
         </Card>
-      </div>
-    </div>
+      </PageContainer>
   );
 };
 

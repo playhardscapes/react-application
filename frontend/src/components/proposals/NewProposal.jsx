@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2 } from 'lucide-react';
+import { PageContainer } from '@/components/layout/PageContainer';
 
 const FIELD_GROUPS = {
   'Client Information': [
@@ -180,22 +181,19 @@ const NewProposal = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white p-6">
-        <div className="max-w-7xl mx-auto">
+      <PageContainer>
           <Card>
             <CardContent className="p-8 text-center">
               <Loader2 className="h-8 w-8 animate-spin mx-auto" />
               <p className="mt-2">Loading estimates...</p>
             </CardContent>
           </Card>
-        </div>
-      </div>
+        </PageContainer>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white p-6">
-      <div className="max-w-7xl mx-auto">
+    <PageContainer>
         <Card>
           <CardHeader>
             <CardTitle>Create New Proposal</CardTitle>
@@ -300,8 +298,7 @@ const NewProposal = () => {
             )}
           </CardContent>
         </Card>
-      </div>
-    </div>
+     </PageContainer>
   );
 };
 

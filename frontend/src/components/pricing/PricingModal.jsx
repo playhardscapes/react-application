@@ -1,4 +1,3 @@
- 
 // src/components/pricing/PricingModal.jsx
 import React, { useState, useEffect } from 'react';
 import {
@@ -19,30 +18,35 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select';
-import { toast } from '@/components/ui/use-toast';
+import { useToast } from '@/components/ui/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   createPricingConfiguration,
   updatePricingConfiguration
 } from '@/services/pricingService';
 
+// Centralized configuration for pricing categories and units
 const PRICING_CATEGORIES = [
   'materials',
-  'services',
-  'equipment',
-  'labor',
+  'services', 
+  'equipment', 
+  'labor', 
   'misc'
 ];
 
 const PRICING_UNITS = [
   'per unit',
-  'per hour',
-  'per sq ft',
-  'per item',
-  'per project',
+  'per hour', 
+  'per sq ft', 
+  'per item', 
+  'per project', 
   'other'
 ];
 
 const PricingModal = ({ pricing, isOpen, onClose, onRefresh }) => {
+  const { token } = useAuth(); // Get authentication token
+  const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     category: '',
@@ -90,8 +94,11 @@ const PricingModal = ({ pricing, isOpen, onClose, onRefresh }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
+    
     try {
+      // Prevent multiple submissions
+      if (isSubmitting) return;
+  
       // Validate inputs
       if (!formData.name || !formData.category || !formData.value) {
         toast({
@@ -101,26 +108,32 @@ const PricingModal = ({ pricing, isOpen, onClose, onRefresh }) => {
         });
         return;
       }
-
-      // Determine if creating or updating
-      const submitFunc = pricing ? updatePricingConfiguration : createPricingConfiguration;
-
+  
+      // Validate value is a positive number
+      const numericValue = parseFloat(formData.value);
+      if (isNaN(numericValue) || numericValue <= 0) {
+        toast({
+          title: "Validation Error",
+          description: "Value must be a positive number",
+          variant: "destructive"
+        });
+        return;
+      }
+  
+      setIsSubmitting(true);
+  
       const payload = {
         ...formData,
-        value: parseFloat(formData.value)
+        value: numericValue
       };
-
-      // If updating, include the ID
+  
+      // Use token for authentication
       if (pricing) {
-        await submitFunc(pricing.id, payload);
+        await updatePricingConfiguration(pricing.id, payload, token);
       } else {
-        await submitFunc(payload);
+        await createPricingConfiguration(payload, token);
       }
-
-      // Refresh the list and close modal
-      onRefresh();
-      onClose();
-
+  
       // Show success toast
       toast({
         title: "Success",
@@ -128,18 +141,26 @@ const PricingModal = ({ pricing, isOpen, onClose, onRefresh }) => {
           ? "Pricing configuration updated successfully"
           : "Pricing configuration created successfully"
       });
+  
+      // Only close and refresh if we made it here without errors
+      onRefresh();
+      onClose();
+      
     } catch (error) {
+      console.error('Submission error:', error);
       toast({
         title: "Error",
         description: error.message || "Failed to save pricing configuration",
         variant: "destructive"
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent>
+      <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>
             {pricing ? 'Edit Pricing Configuration' : 'Create Pricing Configuration'}
@@ -160,6 +181,7 @@ const PricingModal = ({ pricing, isOpen, onClose, onRefresh }) => {
               onChange={handleChange}
               placeholder="Enter configuration name"
               required
+              maxLength={100} // Add max length for name
             />
           </div>
 
@@ -189,6 +211,7 @@ const PricingModal = ({ pricing, isOpen, onClose, onRefresh }) => {
               name="value"
               type="number"
               step="0.01"
+              min="0"
               value={formData.value}
               onChange={handleChange}
               placeholder="Enter pricing value"
@@ -222,14 +245,23 @@ const PricingModal = ({ pricing, isOpen, onClose, onRefresh }) => {
               value={formData.description}
               onChange={handleChange}
               placeholder="Enter description"
+              maxLength={500} // Add max length for description
             />
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={onClose}
+              disabled={isSubmitting}
+            >
               Cancel
             </Button>
-            <Button type="submit">
+            <Button 
+              type="submit" 
+              disabled={isSubmitting}
+            >
               {pricing ? 'Update' : 'Create'}
             </Button>
           </DialogFooter>

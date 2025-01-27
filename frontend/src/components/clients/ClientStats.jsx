@@ -1,9 +1,12 @@
-// src/components/clients/ClientStats.jsx
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Users, Calendar, AlertCircle } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/components/ui/use-toast';
 
 const ClientStats = () => {
+  const { token } = useAuth();
+  const { toast } = useToast();
   const [stats, setStats] = useState({
     totalClients: 0,
     pendingFollowUps: 0,
@@ -11,11 +14,17 @@ const ClientStats = () => {
   });
 
   useEffect(() => {
+    if (!token) return;
+
     const fetchStats = async () => {
       try {
         const [clientsRes, followUpsRes] = await Promise.all([
-          fetch('/api/clients'),
-          fetch('/api/clients/follow-ups/upcoming')
+          fetch('/api/clients', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          }),
+          fetch('/api/clients/follow-ups/upcoming', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          })
         ]);
 
         if (!clientsRes.ok || !followUpsRes.ok) {
@@ -35,11 +44,16 @@ const ClientStats = () => {
         });
       } catch (error) {
         console.error('Error fetching stats:', error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to fetch client statistics"
+        });
       }
     };
 
     fetchStats();
-  }, []); 
+  }, [token]); 
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

@@ -3,11 +3,11 @@ const express = require('express');
 const router = express.Router();
 const { Client } = require('@googlemaps/google-maps-services-js');
 const { body, validationResult } = require('express-validator');
+const { auth: authenticateToken } = require('../middleware/auth');
 
 // Create Google Maps client
 const client = new Client({});
 
-// Custom validation middleware
 const validateMileageRequest = async (req, res, next) => {
   await Promise.all([
     body('origin').trim().notEmpty().withMessage('Origin is required').run(req),
@@ -24,8 +24,8 @@ const validateMileageRequest = async (req, res, next) => {
   next();
 };
 
-// Mileage calculation endpoint
-router.post('/mileage', validateMileageRequest, async (req, res) => {
+// Add authentication to the mileage endpoint
+router.post('/mileage', authenticateToken, validateMileageRequest, async (req, res) => {
   try {
     const { origin, destination } = req.body;
 
